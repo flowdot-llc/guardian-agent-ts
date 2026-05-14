@@ -27,3 +27,29 @@ export type {
   AttestationReceipt,
   HttpAttestorOptions,
 } from './attestor.js';
+export {
+  analyzeAgent,
+  analyzeMultiAgent,
+  compareToBaseline,
+  mean,
+  stddev,
+} from './stats.js';
+export type {
+  AgentProfile,
+  Deviation,
+  DeviationReport,
+  CompareOptions,
+} from './stats.js';
+export {
+  correlate,
+  summarizeSessions,
+  findOverlappingSessions,
+  findArgsHashCollisions,
+  findSequenceSimilarity,
+} from './correlation.js';
+export type {
+  AuditSource,
+  SessionSummary,
+  CorrelationMatch,
+  CorrelationOptions,
+} from './correlation.js';

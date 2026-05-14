@@ -50,6 +50,16 @@ export {
   httpAttestor,
   nullAttestor,
   payloadFromRecord,
+  analyzeAgent,
+  analyzeMultiAgent,
+  compareToBaseline,
+  mean,
+  stddev,
+  correlate,
+  summarizeSessions,
+  findOverlappingSessions,
+  findArgsHashCollisions,
+  findSequenceSimilarity,
 } from './audit/index.js';
 export type {
   AuditLogWriterOptions,
@@ -58,6 +68,14 @@ export type {
   AttestationPayload,
   AttestationReceipt,
   HttpAttestorOptions,
+  AgentProfile,
+  Deviation,
+  DeviationReport,
+  CompareOptions,
+  AuditSource,
+  SessionSummary,
+  CorrelationMatch,
+  CorrelationOptions,
 } from './audit/index.js';
 
 // estop
