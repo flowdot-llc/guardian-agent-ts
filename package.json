@@ -1,0 +1,74 @@
+{
+  "name": "@flowdot-llc/guardian-agent",
+  "version": "0.1.0",
+  "description": "TypeScript reference implementation of the guardian-agent spec: a runtime supervisor for tool-using LLM agents (audit log, tool-permission scoping, HITL approval gates, emergency-stop).",
+  "keywords": [
+    "ai-safety",
+    "agent-safety",
+    "llm-agents",
+    "audit-log",
+    "guardian-agents",
+    "human-in-the-loop",
+    "mcp",
+    "capability-security",
+    "trustworthy-ai",
+    "supervisor"
+  ],
+  "homepage": "https://github.com/flowdot-llc/guardian-agent-ts",
+  "bugs": {
+    "url": "https://github.com/flowdot-llc/guardian-agent-ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flowdot-llc/guardian-agent-ts.git"
+  },
+  "license": "AGPL-3.0-or-later",
+  "author": {
+    "name": "Elliot Mousseau",
+    "email": "elliot@flowdot.ai",
+    "url": "https://flowdot.ai"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "ROADMAP.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "example:quickstart": "tsx examples/quickstart.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "yaml": "^2.4.0",
+    "ulidx": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@vitest/coverage-v8": "^1.4.0",
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "vitest": "^1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
