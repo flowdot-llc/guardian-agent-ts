@@ -14,6 +14,8 @@ import type {
 import { SPEC_VERSION } from '../types.js';
 import { GENESIS_HASH, computeRecordHash, canonicalJsonStringify } from './chain.js';
 import { signRecord } from './signature.js';
+import type { Attestor } from './attestor.js';
+import { payloadFromRecord } from './attestor.js';
 
 export interface AuditLogWriterOptions {
   /** Path to the JSONL audit log file. Created if absent. */
@@ -36,6 +38,20 @@ export interface AuditLogWriterOptions {
    * caller of open().
    */
   onTipRecovered?: (lastRecord: AuditRecord) => void | Promise<void>;
+  /**
+   * External attestor. When set, the writer publishes the current chain
+   * head every {@link attestEvery} records and on close(). Each successful
+   * publish emits an `x_chain_attested` audit row; failures emit
+   * `x_chain_attestation_failed`. Attestor errors are NEVER fatal. SPEC §2.7.
+   */
+  attestor?: Attestor;
+  /** Records between attestations. Default 100. Ignored when attestor is unset. */
+  attestEvery?: number;
+  /**
+   * Attest the final chain head when close() is called. Default true.
+   * Ignored when attestor is unset.
+   */
+  attestOnClose?: boolean;
 }
 
 /**
@@ -57,6 +73,18 @@ export class AuditLogWriter {
   private readonly onTipRecovered:
     | ((lastRecord: AuditRecord) => void | Promise<void>)
     | undefined;
+  private readonly attestor: Attestor | undefined;
+  private readonly attestEvery: number;
+  private readonly attestOnClose: boolean;
+  // Running count of records appended in THIS process. Reset to 0 on open()
+  // and incremented on each writeOne. Used to fire attestation at fixed
+  // intervals.
+  private appendedCount = 0;
+  // Set true while emitting an attestation-related audit row, so the
+  // attestation hook does NOT re-trigger on its own audit rows. Prevents
+  // unbounded recursion: an attestation row would otherwise be the next
+  // record to attest.
+  private attestationInFlight = false;
 
   constructor(options: AuditLogWriterOptions) {
     this.path = options.path;
@@ -65,6 +93,12 @@ export class AuditLogWriter {
     this.fileMode = options.fileMode ?? 0o600;
     this.signWith = options.signWith;
     this.onTipRecovered = options.onTipRecovered;
+    this.attestor = options.attestor;
+    this.attestEvery = options.attestEvery ?? 100;
+    this.attestOnClose = options.attestOnClose ?? true;
+    if (this.attestEvery <= 0) {
+      throw new Error('attestEvery must be > 0');
+    }
   }
 
   /** Tip of the hash chain (the last appended record's hash). */
@@ -115,6 +149,10 @@ export class AuditLogWriter {
   /** Flush and close the file handle. Idempotent. */
   async close(): Promise<void> {
     if (this.closed) return;
+    // Final attestation BEFORE flipping `closed`, so we can still append.
+    if (this.attestor && this.attestOnClose && this.appendedCount > 0) {
+      await this.runAttestation();
+    }
     this.closed = true;
     // Drain the queue.
     /* c8 ignore start */
@@ -130,6 +168,78 @@ export class AuditLogWriter {
       await this.handle.close();
       this.handle = null;
     }
+  }
+
+  /**
+   * Publish the current chain head to the configured attestor and emit
+   * `x_chain_attested` (success) or `x_chain_attestation_failed` (error).
+   * Idempotent on no-attestor or in-flight: callers can fire-and-forget.
+   *
+   * Exposed publicly so consumers can force a flush (e.g., on a
+   * manually-triggered checkpoint).
+   */
+  async runAttestation(): Promise<void> {
+    if (!this.attestor || this.attestationInFlight || this.closed) return;
+    this.attestationInFlight = true;
+    try {
+      // Build the payload from the most-recently-written record's hash. We
+      // synthesize a minimal AuditRecord wrapper for payloadFromRecord:
+      // only fields it reads are agent_id/session_id/signature, and we
+      // already have all three.
+      const head = this._tipHash;
+      // The last record's signature isn't trivially recoverable without
+      // re-reading the file; we publish with `signature: null` and let the
+      // verifier cross-check against the chain head only. The chain head is
+      // the load-bearing commitment; the signature is an auxiliary check
+      // that the verifier can run independently against the local log.
+      const synthRecord = {
+        agent_id: this.agentId,
+        session_id: this.sessionId,
+        signature: null,
+      } as unknown as AuditRecord;
+      const payload = payloadFromRecord(synthRecord, this.appendedCount, head);
+      try {
+        const receipt = await this.attestor.publish(payload);
+        await this.appendInternal({
+          kind: 'x_chain_attested' as unknown as 'session_open',
+          status: 'approved',
+          initiator: 'system',
+          detail: {
+            chain_head: head,
+            records_in_session: this.appendedCount,
+            receipt_id: receipt.receiptId,
+            ...(receipt.url ? { receipt_url: receipt.url } : {}),
+          },
+        });
+      } catch (err) {
+        await this.appendInternal({
+          kind: 'x_chain_attestation_failed' as unknown as 'session_open',
+          status: 'errored',
+          initiator: 'system',
+          detail: {
+            chain_head: head,
+            records_in_session: this.appendedCount,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+    } finally {
+      this.attestationInFlight = false;
+    }
+  }
+
+  /**
+   * Internal-only append that bypasses the closed check (used by close() to
+   * write the final attestation row) and skips the attestation hook (to
+   * avoid recursion when writing attestation outcome rows).
+   */
+  private async appendInternal(input: AuditRecordInput): Promise<AuditRecord> {
+    const result = this.queue.then(async () => {
+      await this.open();
+      return this.writeOne(input);
+    });
+    this.queue = result.catch(() => undefined);
+    return result;
   }
 
   // ---- internal --------------------------------------------------------------
@@ -172,6 +282,22 @@ export class AuditLogWriter {
     }
 
     this._tipHash = computeRecordHash(record);
+    this.appendedCount += 1;
+
+    // Fire attestation when we cross an attestEvery boundary. Skip if this
+    // append IS itself an attestation outcome row (set by runAttestation).
+    if (
+      this.attestor &&
+      !this.attestationInFlight &&
+      this.appendedCount % this.attestEvery === 0
+    ) {
+      // Fire-and-forget: failures are recorded as audit rows by
+      // runAttestation itself. We don't await here so a slow attestor
+      // doesn't back up the writer queue. The internal queue still
+      // serializes the audit row writes.
+      void this.runAttestation();
+    }
+
     return record;
   }
 

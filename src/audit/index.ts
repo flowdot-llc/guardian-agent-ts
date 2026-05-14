@@ -16,3 +16,14 @@ export {
   SIGNATURE_PREFIX,
 } from './signature.js';
 export type { Ed25519KeyPair } from './signature.js';
+export {
+  httpAttestor,
+  nullAttestor,
+  payloadFromRecord,
+} from './attestor.js';
+export type {
+  Attestor,
+  AttestationPayload,
+  AttestationReceipt,
+  HttpAttestorOptions,
+} from './attestor.js';

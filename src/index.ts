@@ -9,6 +9,29 @@ export { SPEC_VERSION } from './types.js';
 // runtime
 export { GuardianRuntime } from './runtime/runtime.js';
 export type { GuardianRuntimeOptions, ToolOptions } from './runtime/runtime.js';
+export {
+  defineHoneytokenSet,
+  matchPhantomTool,
+  matchHoneytokenInArgs,
+  checkHoneytoken,
+} from './runtime/honeytokens.js';
+export type { Honeytoken, HoneytokenSet, HoneytokenHit } from './runtime/honeytokens.js';
+export { CapabilityWindow } from './runtime/capability.js';
+export type {
+  CapabilityClass,
+  CapabilityRule,
+  CapabilityEvent,
+  CapabilityMatch,
+  CapabilityWindowOptions,
+} from './runtime/capability.js';
+export { MultiRateLimiter, DEFAULT_BUCKETS } from './runtime/multi-rate-limiter.js';
+export type {
+  BucketConfig,
+  MultiRateLimiterOptions,
+  ConsumeAllowed,
+  ConsumeDenied,
+  ConsumeResult,
+} from './runtime/multi-rate-limiter.js';
 
 // audit
 export {
@@ -24,8 +47,18 @@ export {
   signRecord,
   verifyRecord,
   SIGNATURE_PREFIX,
+  httpAttestor,
+  nullAttestor,
+  payloadFromRecord,
 } from './audit/index.js';
-export type { AuditLogWriterOptions, Ed25519KeyPair } from './audit/index.js';
+export type {
+  AuditLogWriterOptions,
+  Ed25519KeyPair,
+  Attestor,
+  AttestationPayload,
+  AttestationReceipt,
+  HttpAttestorOptions,
+} from './audit/index.js';
 
 // estop
 export { EStopLocal } from './estop/local.js';
