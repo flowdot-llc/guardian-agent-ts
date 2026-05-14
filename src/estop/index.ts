@@ -19,6 +19,8 @@ export type {
 } from './middleware.js';
 export { createEStopPoller, EStopPoller } from './poller.js';
 export type { EStopPollerOptions } from './poller.js';
+export { HeartbeatMonitor } from './heartbeat.js';
+export type { HeartbeatMonitorOptions } from './heartbeat.js';
 export type {
   EStopState,
   EStopPressOptions,

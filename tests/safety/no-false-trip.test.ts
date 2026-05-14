@@ -131,4 +131,28 @@ describe('v0.8 negative-corpus harness', () => {
       }
     }
   });
+
+  it('v0.9: no record in any corpus has pending_operator status (no surface has wired it yet)', () => {
+    // If/when a surface deliberately wires operator confirmation into real
+    // workflows, refresh the corpus + tighten this check accordingly.
+    for (const file of CORPUS_FILES) {
+      const records = loadCorpus(file);
+      for (const r of records) {
+        expect((r as { status?: string }).status).not.toBe('pending_operator');
+      }
+    }
+  });
+
+  it('v0.9: no record in any corpus is an estop_press with reason=heartbeat_missed', () => {
+    // If this fails, an opt-in surface enabled heartbeat without wiring
+    // heartbeat() calls — i.e., a false E-stop. Heartbeat is opt-in
+    // precisely to keep this expectation valid.
+    for (const file of CORPUS_FILES) {
+      const records = loadCorpus(file);
+      const offenders = records.filter(
+        (r) => r.kind === 'estop_press' && r.detail?.reason === 'heartbeat_missed',
+      );
+      expect(offenders).toEqual([]);
+    }
+  });
 });

@@ -63,6 +63,8 @@ export type {
 // estop
 export { EStopLocal } from './estop/local.js';
 export type { EStopLocalOptions } from './estop/local.js';
+export { HeartbeatMonitor } from './estop/heartbeat.js';
+export type { HeartbeatMonitorOptions } from './estop/heartbeat.js';
 export type {
   EStopState,
   EStopPressOptions,
@@ -80,6 +82,19 @@ export {
   resolveOption,
 } from './gate/options.js';
 export type { GateOption, GateOptionSet } from './gate/options.js';
+
+// two-key operator authorization (v0.9 / SPEC §4.5)
+export {
+  callbackOperatorGate,
+  denyAllOperatorGate,
+  newGateId,
+  awaitWithTimeout,
+} from './gate/two-key.js';
+export type {
+  OperatorConfirmationGate,
+  OperatorConfirmationRequest,
+  OperatorConfirmationResponse,
+} from './gate/two-key.js';
 
 // policy attribution path matching (model/provider/aggregator/surface globs)
 export {

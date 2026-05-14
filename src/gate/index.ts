@@ -24,3 +24,14 @@ export {
   resolveOption,
 } from './options.js';
 export type { GateOption, GateOptionSet } from './options.js';
+export {
+  callbackOperatorGate,
+  denyAllOperatorGate,
+  newGateId,
+  awaitWithTimeout,
+} from './two-key.js';
+export type {
+  OperatorConfirmationGate,
+  OperatorConfirmationRequest,
+  OperatorConfirmationResponse,
+} from './two-key.js';

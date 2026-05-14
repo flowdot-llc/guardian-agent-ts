@@ -16,6 +16,11 @@ import type { EStopLocal } from '../estop/local.js';
 import type { EStopPressOptions } from '../estop/types.js';
 import { checkHoneytoken, type HoneytokenSet } from './honeytokens.js';
 import { CapabilityWindow, type CapabilityClass, type CapabilityRule } from './capability.js';
+import {
+  awaitWithTimeout,
+  newGateId,
+  type OperatorConfirmationGate,
+} from '../gate/two-key.js';
 
 export interface GuardianRuntimeOptions {
   agentId: string;
@@ -34,6 +39,14 @@ export interface GuardianRuntimeOptions {
    * Yellow-line only (audit-row, no behavior change). SPEC §4. v0.3.0+.
    */
   capabilityRules?: CapabilityRule[];
+  /**
+   * Two-key operator gate. When set, tools marked
+   * `requiresOperatorConfirmation: true` will suspend pending operator
+   * approval. SPEC §4.5. v0.4.0+.
+   */
+  operatorGate?: OperatorConfirmationGate;
+  /** Default timeout for operator confirmations. Default 5 minutes. */
+  operatorTimeoutMs?: number;
 }
 
 export interface ToolOptions {
@@ -49,6 +62,19 @@ export interface ToolOptions {
    * (unless a rule deliberately names `'unknown'`).
    */
   capabilities?: CapabilityClass[];
+  /**
+   * When true, the runtime suspends the call before dispatch and calls
+   * the configured `operatorGate`. The gate's `denied` response (including
+   * timeout-as-denied) throws `GuardianHaltedError`. SPEC §4.5. v0.4.0+.
+   *
+   * Setting this true with no operator gate configured throws — that's
+   * a configuration error, not a runtime fail-closed.
+   */
+  requiresOperatorConfirmation?: boolean;
+  /** Free-text reason recorded on the pending audit row. */
+  operatorConfirmationReason?: string;
+  /** Per-call timeout override (ms). Default = runtime's operatorTimeoutMs. */
+  operatorConfirmationTimeoutMs?: number;
 }
 
 export class GuardianRuntime {
@@ -59,6 +85,8 @@ export class GuardianRuntime {
   readonly defaultModel: ModelAttribution | undefined;
   readonly honeytokens: HoneytokenSet | undefined;
   readonly capabilityWindow: CapabilityWindow | undefined;
+  readonly operatorGate: OperatorConfirmationGate | undefined;
+  readonly operatorTimeoutMs: number;
 
   private sessionOpened = false;
   private closed = false;
@@ -74,6 +102,8 @@ export class GuardianRuntime {
       options.capabilityRules && options.capabilityRules.length > 0
         ? new CapabilityWindow({ rules: options.capabilityRules })
         : undefined;
+    this.operatorGate = options.operatorGate;
+    this.operatorTimeoutMs = options.operatorTimeoutMs ?? 5 * 60 * 1000;
   }
 
   /** Open the session. Idempotent. Emits session_open. */
@@ -158,6 +188,57 @@ export class GuardianRuntime {
           `tool call rejected: emergency stop active`,
           this.estop.getState().pressedReason,
         );
+      }
+
+      // Two-key operator authorization. SPEC §4.5. Fires BEFORE tool_call
+      // (pending_operator means we haven't decided to dispatch yet).
+      // Sequence: pending_operator → gate awaits → approved or denied,
+      // all three rows share the same gate_id for correlation.
+      if (opts?.requiresOperatorConfirmation) {
+        if (!this.operatorGate) {
+          throw new Error(
+            `tool ${JSON.stringify(toolName)} requires operator confirmation but no operatorGate is configured on the runtime`,
+          );
+        }
+        const gateId = newGateId();
+        const timeoutMs = opts.operatorConfirmationTimeoutMs ?? this.operatorTimeoutMs;
+        const reason = opts.operatorConfirmationReason ?? 'unspecified';
+        await this.audit.append({
+          kind: 'policy_check',
+          status: 'pending_operator',
+          initiator: 'system',
+          tool: { name: toolName, args: argsToObject(args) },
+          detail: { gate_id: gateId, timeout_ms: timeoutMs, reason },
+        });
+        const response = await awaitWithTimeout(this.operatorGate, {
+          gate_id: gateId,
+          tool_name: toolName,
+          tool_args: argsToObject(args),
+          reason,
+          timeout_ms: timeoutMs,
+          agent_id: this.agentId,
+          session_id: this.sessionId,
+        });
+        const resolutionDetail: Record<string, unknown> = { gate_id: gateId };
+        if (response.operator_id !== undefined) {
+          resolutionDetail.operator_id = response.operator_id;
+        }
+        if (response.reason !== undefined) {
+          resolutionDetail.reason = response.reason;
+        }
+        await this.audit.append({
+          kind: 'policy_check',
+          status: response.decision,
+          initiator: 'operator',
+          tool: { name: toolName, args: argsToObject(args) },
+          detail: resolutionDetail,
+        });
+        if (response.decision === 'denied') {
+          throw new GuardianHaltedError(
+            `tool call rejected: operator ${response.reason === 'timeout' ? 'confirmation timed out' : 'denied'}`,
+            `operator:${response.reason ?? 'denied'}`,
+          );
+        }
       }
 
       const model = opts?.model ?? this.defaultModel;

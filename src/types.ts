@@ -21,7 +21,13 @@ export type AuditRecordStatus =
   | 'denied'
   | 'executed'
   | 'errored'
-  | 'halted';
+  | 'halted'
+  /**
+   * Tool dispatch is suspended awaiting operator confirmation. SPEC §4.5
+   * (v0.4.0+). The matching resolution row writes `approved` or `denied`
+   * with the same `detail.gate_id`.
+   */
+  | 'pending_operator';
 
 export type AuditRecordInitiator = 'operator' | 'agent' | 'system';
 
