@@ -38,6 +38,25 @@ export type {
   EStopClearResult,
 } from './estop/types.js';
 
+// gate option sets (custom + the FlowDot defaults)
+export {
+  CLASSIC_FOUR,
+  FLOWDOT_FIVE,
+  defineGateOptionSet,
+  findOption,
+  resolveOption,
+} from './gate/options.js';
+export type { GateOption, GateOptionSet } from './gate/options.js';
+
+// policy attribution path matching (model/provider/aggregator/surface globs)
+export {
+  flatGlobMatch,
+  matchAttributionPath,
+  renderAttributionPath,
+  ATTRIBUTION_MISSING_SEGMENT,
+} from './policy/attribution.js';
+export type { PolicyWhen } from './policy/types.js';
+
 // notify
 export type { Notifier, NotificationEvent, NotificationKind } from './notify/types.js';
 export { consoleNotifier, webhookNotifier, multiNotifier } from './notify/index.js';

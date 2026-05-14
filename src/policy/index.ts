@@ -1,5 +1,18 @@
-export type { Policy, PolicyRule, PolicyScope, PolicyDecision, PolicyEvaluation } from './types.js';
+export type {
+  Policy,
+  PolicyRule,
+  PolicyScope,
+  PolicyDecision,
+  PolicyEvaluation,
+  PolicyWhen,
+} from './types.js';
 export { PolicyEvaluator, globMatch } from './evaluator.js';
+export {
+  flatGlobMatch,
+  matchAttributionPath,
+  renderAttributionPath,
+  ATTRIBUTION_MISSING_SEGMENT,
+} from './attribution.js';
 export { PolicyStore } from './store.js';
 export type { PolicyStoreOptions } from './store.js';
 export { parsePolicy, validatePolicy } from './loader.js';

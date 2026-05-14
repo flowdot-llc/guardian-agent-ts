@@ -16,3 +16,11 @@ export type {
   DataChannelSend,
   DataChannelOnResponse,
 } from './data-channel.js';
+export {
+  CLASSIC_FOUR,
+  FLOWDOT_FIVE,
+  defineGateOptionSet,
+  findOption,
+  resolveOption,
+} from './options.js';
+export type { GateOption, GateOptionSet } from './options.js';

@@ -209,6 +209,32 @@ describe('GuardianRuntime', () => {
     expect(call?.model).toEqual({ provider: 'openai', id: 'gpt-5' });
   });
 
+  it('records surface + aggregator on the wire when supplied', async () => {
+    const path = join(tmp, 'audit.jsonl');
+    const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });
+    const rt = new GuardianRuntime({ agentId: 'a', sessionId: 's', audit });
+    const t = rt.tool(async () => 1, {
+      name: 't',
+      model: {
+        surface: 'FlowDot',
+        aggregator: 'RedPill',
+        provider: 'Anthropic',
+        id: 'claude-opus-4.5',
+      },
+    });
+    await t();
+    await rt.close();
+
+    const recs = await readAll(path);
+    const call = recs.find((r) => r.kind === 'tool_call');
+    expect(call?.model).toEqual({
+      provider: 'Anthropic',
+      id: 'claude-opus-4.5',
+      surface: 'FlowDot',
+      aggregator: 'RedPill',
+    });
+  });
+
   it('records args as object with positional keys', async () => {
     const path = join(tmp, 'audit.jsonl');
     const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });

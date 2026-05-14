@@ -191,12 +191,16 @@ function argsToObject(args: readonly unknown[]): Record<string, unknown> {
 function modelToWire(model: ModelAttribution): {
   provider: string;
   id: string;
+  surface?: string;
+  aggregator?: string;
   input_tokens?: number;
   output_tokens?: number;
 } {
   return {
     provider: model.provider,
     id: model.id,
+    ...(model.surface === undefined ? {} : { surface: model.surface }),
+    ...(model.aggregator === undefined ? {} : { aggregator: model.aggregator }),
     ...(model.inputTokens === undefined ? {} : { input_tokens: model.inputTokens }),
     ...(model.outputTokens === undefined ? {} : { output_tokens: model.outputTokens }),
   };

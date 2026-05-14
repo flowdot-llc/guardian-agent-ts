@@ -11,15 +11,26 @@ export type PolicyDecision = 'allow' | 'deny' | 'prompt';
 /**
  * Conditional clause: a rule only matches when these model attributes
  * match the request. Strings are matched with the same shell-style globs
- * (`*`, `?`, `[seq]`) used for tool names.
+ * (`*`, `?`, `[seq]`) used for tool names — except `attribution_path`, which
+ * uses flat-glob (where `*` also matches `/`).
  *
  * v0.6+. SPEC §3 open question (resolved).
+ *
+ * Multiple fields are conjunctive: the rule matches only when every
+ * provided clause matches.
  */
 export interface PolicyWhen {
   /** Match on `model.provider` (e.g., 'anthropic', 'openai', 'ollama'). */
   'model.provider'?: string;
   /** Match on `model.id` (e.g., 'claude-*-4.5*', 'gpt-5*', 'llama3*'). */
   'model.id'?: string;
+  /**
+   * Match on the rendered attribution path
+   * `surface/aggregator/provider/id`. Flat-glob: `*` matches across `/`.
+   * Examples: `'*\/RedPill/*\/*'`, `'FlowDot/*\/Anthropic/claude-*-4.*'`,
+   * `'*claude-opus*'`. See `policy/attribution.ts`.
+   */
+  attribution_path?: string;
 }
 
 /** A single rule in the policy. */

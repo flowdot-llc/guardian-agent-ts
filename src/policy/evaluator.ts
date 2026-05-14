@@ -19,6 +19,7 @@
  */
 
 import type { ModelAttribution } from '../types.js';
+import { matchAttributionPath } from './attribution.js';
 import type { Policy, PolicyEvaluation, PolicyRule, PolicyScope } from './types.js';
 
 const RANK: Record<PolicyScope, number> = {
@@ -157,6 +158,10 @@ function whenMatches(rule: PolicyRule, model: ModelAttribution | undefined): boo
   if (rule.when['model.id'] !== undefined) {
     if (!model) return false;
     if (!globMatch(rule.when['model.id'], model.id)) return false;
+  }
+  if (rule.when.attribution_path !== undefined) {
+    if (!model) return false;
+    if (!matchAttributionPath(rule.when.attribution_path, model)) return false;
   }
   return true;
 }

@@ -27,10 +27,29 @@ export type AuditRecordInitiator = 'operator' | 'agent' | 'system';
 
 /**
  * Identifies which model issued a tool call. SPEC §2.3.
+ *
+ * The optional `surface` and `aggregator` fields (v0.7+) extend the basic
+ * `provider/id` pair with the chain that delivered the call:
+ *
+ *   surface       — which FlowDot surface (or third-party harness) is hosting
+ *                   the agent (e.g., 'FlowDot', 'FlowDotMobile', 'cursor').
+ *   aggregator    — the optional intermediary that routed the request
+ *                   (e.g., 'RedPill', 'OpenRouter'). `'direct'` is the
+ *                   convention when no aggregator is in the path.
+ *   provider      — the model vendor (e.g., 'Anthropic', 'OpenAI').
+ *   id            — the specific model id (e.g., 'claude-opus-4.5').
+ *
+ * Rendered as `surface/aggregator/provider/id` (see
+ * `policy/attribution.ts:renderAttributionPath`) for glob-based policy rules.
+ *
+ * Missing segments render as `'*'`. Old call sites that only supply
+ * `{provider, id}` continue to work and render as `*\/*\/<provider>/<id>`.
  */
 export interface ModelAttribution {
   provider: string;
   id: string;
+  surface?: string;
+  aggregator?: string;
   inputTokens?: number;
   outputTokens?: number;
 }
@@ -65,6 +84,8 @@ export interface AuditRecord {
   model?: {
     provider: string;
     id: string;
+    surface?: string;
+    aggregator?: string;
     input_tokens?: number;
     output_tokens?: number;
   };
