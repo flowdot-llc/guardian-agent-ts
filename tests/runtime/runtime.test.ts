@@ -289,4 +289,35 @@ describe('GuardianRuntime', () => {
       expect(recs).toHaveLength(0);
     }
   });
+
+  it('records capabilities on tool_call, policy_check, and tool_result records', async () => {
+    const path = join(tmp, 'audit.jsonl');
+    const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });
+    const rt = new GuardianRuntime({ agentId: 'a', sessionId: 's', audit });
+    const t = rt.tool(async () => 'ok', {
+      name: 'send_email',
+      capabilities: ['credential', 'network-egress', 'write'],
+    });
+    await t();
+    await rt.close();
+    const recs = await readAll(path);
+    const call = recs.find((r) => r.kind === 'tool_call');
+    const policy = recs.find((r) => r.kind === 'policy_check' && r.status === 'approved');
+    const result = recs.find((r) => r.kind === 'tool_result');
+    expect(call?.tool?.capabilities).toEqual(['credential', 'network-egress', 'write']);
+    expect(policy?.tool?.capabilities).toEqual(['credential', 'network-egress', 'write']);
+    expect(result?.tool?.capabilities).toEqual(['credential', 'network-egress', 'write']);
+  });
+
+  it("untagged tools record as ['unknown'] on the audit record", async () => {
+    const path = join(tmp, 'audit.jsonl');
+    const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });
+    const rt = new GuardianRuntime({ agentId: 'a', sessionId: 's', audit });
+    const t = rt.tool(async () => 'ok', { name: 'plain' });
+    await t();
+    await rt.close();
+    const recs = await readAll(path);
+    const call = recs.find((r) => r.kind === 'tool_call');
+    expect(call?.tool?.capabilities).toEqual(['unknown']);
+  });
 });

@@ -20,10 +20,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  CapabilityWindow,
   DEFAULT_BUCKETS,
   MultiRateLimiter,
   checkHoneytoken,
   defineHoneytokenSet,
+  type CapabilityClass,
 } from '../../src/index.js';
 import type { AuditRecord } from '../../src/types.js';
 
@@ -155,4 +157,152 @@ describe('v0.8 negative-corpus harness', () => {
       expect(offenders).toEqual([]);
     }
   });
+
+  // ==========================================================================
+  // Capability-rule retroactive replay (v0.10 #1 calibration)
+  // ==========================================================================
+  //
+  // The corpus pre-dates capability tagging — historical tool_call records
+  // carry no `tool.capabilities` field. To validate the proposed Yellow
+  // rule against real workflows we have to retro-tag.
+  //
+  // The retro-tagger duplicates a SIMPLIFIED form of the per-surface tagging
+  // tables in `mcp-server/src/tool-capabilities.ts` and
+  // `flowdot-cli/packages/core/src/services/tool-capabilities.ts`. Drift is
+  // a real risk — refresh this when surface tables change.
+
+  function retroTagMcp(toolName: string): CapabilityClass[] {
+    const exact: Record<string, CapabilityClass[]> = {
+      whoami: ['read', 'network-egress', 'credential'],
+      agent_chat: ['execute', 'network-egress', 'credential'],
+      panic_status: ['read'],
+      panic_stop: ['execute', 'credential'],
+      panic_clear: ['execute', 'credential'],
+      email_send: ['write', 'network-egress', 'credential'],
+      email_reply: ['write', 'network-egress', 'credential'],
+      email_draft: ['write', 'network-egress', 'credential'],
+      email_archive: ['write', 'network-egress', 'credential'],
+      email_label: ['write', 'network-egress', 'credential'],
+      email_delete: ['delete', 'network-egress', 'credential'],
+      email_list_threads: ['read', 'network-egress', 'credential'],
+      email_search: ['read', 'network-egress', 'credential'],
+      email_read: ['read', 'network-egress', 'credential'],
+      search: ['read', 'network-egress', 'credential'],
+      send_notification: ['write', 'network-egress', 'credential'],
+      query_knowledge_base: ['read', 'network-egress', 'credential'],
+    };
+    // Strip mcp__<server>__ prefix if present (toolkit doubling).
+    let stripped = toolName;
+    if (toolName.startsWith('mcp__')) {
+      const parts = toolName.split('__');
+      if (parts.length >= 3) stripped = parts.slice(2).join('__');
+    }
+    if (exact[toolName]) return exact[toolName] as CapabilityClass[];
+    if (exact[stripped]) return exact[stripped] as CapabilityClass[];
+    const writePrefixes = [
+      'add_', 'create_', 'update_', 'insert_', 'append_', 'prepend_', 'patch_',
+      'set_', 'toggle_', 'favorite_', 'vote_', 'link_', 'unlink_', 'move_',
+      'transfer_', 'publish_', 'unpublish_', 'reprocess_', 'upload_', 'clone_',
+      'duplicate_', 'fork_', 'copy_', 'complete_', 'abandon_', 'pause_',
+      'resume_', 'retry_', 'share_', 'install_', 'checkpoint_', 'restore_',
+      'rename_', 'edit_',
+    ];
+    const readPrefixes = ['list_', 'get_', 'search_', 'browse_', 'find_', 'query_', 'describe_', 'validate_'];
+    const executePrefixes = ['execute_', 'cancel_', 'stream_', 'invoke_', 'emit_', 'test_', 'check_'];
+    if (stripped.startsWith('delete_')) return ['delete', 'network-egress', 'credential'];
+    if (stripped.startsWith('uninstall_')) return ['delete', 'network-egress', 'credential'];
+    for (const p of writePrefixes) {
+      if (stripped.startsWith(p)) return ['write', 'network-egress', 'credential'];
+    }
+    for (const p of readPrefixes) {
+      if (stripped.startsWith(p)) return ['read', 'network-egress', 'credential'];
+    }
+    for (const p of executePrefixes) {
+      if (stripped.startsWith(p)) return ['execute', 'network-egress', 'credential'];
+    }
+    return ['unknown'];
+  }
+
+  function retroTagCli(action: string): CapabilityClass[] {
+    const builtin: Record<string, CapabilityClass[]> = {
+      read: ['read'],
+      search: ['read'],
+      analyze: ['read'],
+      'find-definition': ['read'],
+      'edit-file': ['write'],
+      'create-file': ['write'],
+      'execute-command': ['execute', 'system-path'],
+      'web-search': ['read', 'network-egress'],
+      'fetch-url': ['read', 'network-egress'],
+      'query-knowledge-base': ['read', 'network-egress', 'credential'],
+      'list-knowledge-documents': ['read', 'network-egress', 'credential'],
+      'get-knowledge-document': ['read', 'network-egress', 'credential'],
+      'get-knowledge-document-content': ['read', 'network-egress', 'credential'],
+      'update-knowledge-document-content': ['write', 'network-egress', 'credential'],
+      'patch-knowledge-document-section': ['write', 'network-egress', 'credential'],
+      'list-knowledge-categories': ['read', 'network-egress', 'credential'],
+      'create-knowledge-category': ['write', 'network-egress', 'credential'],
+      'upload-knowledge-text': ['write', 'network-egress', 'credential'],
+      'get-knowledge-storage': ['read', 'network-egress', 'credential'],
+      'send-notification': ['write', 'network-egress', 'credential'],
+    };
+    return builtin[action] ?? ['unknown'];
+  }
+
+  function retroTag(record: AuditRecord): CapabilityClass[] {
+    const tool = record.tool?.name ?? '';
+    if (!tool) return ['unknown'];
+    if (record.agent_id === 'flowdot-cli') return retroTagCli(tool);
+    return retroTagMcp(tool);
+  }
+
+  // The Yellow rule both surfaces ship in init.
+  const EXFIL_SHAPE_RULE = {
+    id: 'exfil-shape',
+    combination: ['credential', 'network-egress', 'write'] as CapabilityClass[],
+    window_ms: 60_000,
+    level: 'yellow' as const,
+  };
+
+  for (const file of CORPUS_FILES) {
+    it(`v0.10 capability replay: exfil-shape Yellow rule produces ZERO false fires on ${file}`, () => {
+      const records = loadCorpus(file);
+      const toolCalls = records.filter((r) => r.kind === 'tool_call' && r.tool);
+      if (toolCalls.length === 0) {
+        // No tool_calls in this fixture (CLI corpus is mostly session lifecycle).
+        // Nothing to retro-tag; pass trivially.
+        return;
+      }
+      const window = new CapabilityWindow({
+        rules: [EXFIL_SHAPE_RULE],
+        now: () => 0, // overwritten per-record below
+      });
+      // Inject the real ts as the window's clock by re-creating the matcher
+      // with a closure-tracked counter, OR simpler: feed events in
+      // chronological order with a `now()` that returns each record's ts.
+      let clock = 0;
+      const windowWithClock = new CapabilityWindow({
+        rules: [EXFIL_SHAPE_RULE],
+        now: () => clock,
+      });
+      const fires: { eventId: string; tool: string }[] = [];
+      for (const r of toolCalls) {
+        clock = new Date(r.ts).getTime();
+        const caps = retroTag(r);
+        const matches = windowWithClock.record(caps, r.event_id);
+        for (const m of matches) {
+          fires.push({ eventId: r.event_id, tool: r.tool!.name });
+          void m;
+        }
+      }
+      void window; // silence unused warning from the first constructor
+
+      // If this assertion fails, either (a) the corpus genuinely contains
+      // the exfil-shape pattern (and the operator should review), or
+      // (b) the proposed Yellow rule is too broad and needs tightening
+      // before deployment. Per plan: "no false E-stops, ever" applies to
+      // Yellow data feeding Red promotion too.
+      expect(fires).toEqual([]);
+    });
+  }
 });

@@ -242,13 +242,24 @@ export class GuardianRuntime {
       }
 
       const model = opts?.model ?? this.defaultModel;
+      const capabilities: CapabilityClass[] = opts?.capabilities ?? ['unknown'];
+
+      // Build the shared tool sub-object once so capabilities are present
+      // on every record this dispatch produces (tool_call, policy_check,
+      // tool_result). audit consumers can read the capability tags without
+      // consulting an external tagging table.
+      const toolBase = {
+        name: toolName,
+        args: argsToObject(args),
+        capabilities,
+      };
 
       // 1. tool_call (pending)
       const callRecord = await this.audit.append({
         kind: 'tool_call',
         status: 'pending',
         initiator: 'agent',
-        tool: { name: toolName, args: argsToObject(args) },
+        tool: toolBase,
         ...(model === undefined ? {} : { model: modelToWire(model) }),
       });
 
@@ -257,7 +268,6 @@ export class GuardianRuntime {
       // matches do NOT change dispatch behavior. The matches are captured
       // here so the post-dispatch hook can write `x_capability_yellow`
       // adjacent to the tool_call event for forensic clarity.
-      const capabilities: CapabilityClass[] = opts?.capabilities ?? ['unknown'];
       const capabilityMatches = this.capabilityWindow
         ? this.capabilityWindow.record(capabilities, callRecord.event_id)
         : [];
@@ -268,7 +278,7 @@ export class GuardianRuntime {
             : 'x_capability_redline') as unknown as 'policy_check',
           status: 'approved',
           initiator: 'system',
-          tool: { name: toolName, args: argsToObject(args) },
+          tool: toolBase,
           detail: {
             rule_id: match.ruleId,
             combination: match.combination,
@@ -287,7 +297,7 @@ export class GuardianRuntime {
         kind: 'policy_check',
         status: 'approved',
         initiator: 'system',
-        tool: { name: toolName, args: argsToObject(args) },
+        tool: toolBase,
         detail: { matched_at: 'default' },
       });
 
@@ -302,11 +312,7 @@ export class GuardianRuntime {
           kind: 'tool_result',
           status: 'errored',
           initiator: 'system',
-          tool: {
-            name: toolName,
-            args: argsToObject(args),
-            duration_ms: durationMs,
-          },
+          tool: { ...toolBase, duration_ms: durationMs },
           detail: { error: err instanceof Error ? err.message : String(err) },
         });
         throw err;
@@ -317,12 +323,7 @@ export class GuardianRuntime {
         kind: 'tool_result',
         status: 'executed',
         initiator: 'system',
-        tool: {
-          name: toolName,
-          args: argsToObject(args),
-          result,
-          duration_ms: durationMs,
-        },
+        tool: { ...toolBase, result, duration_ms: durationMs },
       });
 
       return result;

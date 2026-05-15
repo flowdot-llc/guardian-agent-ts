@@ -86,6 +86,13 @@ export interface AuditRecord {
     args: Record<string, unknown>;
     result?: unknown;
     duration_ms?: number;
+    /**
+     * Capability classes for the dispatched tool. Recorded on `tool_call`
+     * (and forwarded on `tool_result`) so audit consumers can correlate
+     * a call with its declared capabilities without consulting an external
+     * tagging table. SPEC §13.1. v0.3.0+.
+     */
+    capabilities?: string[];
   };
   model?: {
     provider: string;
