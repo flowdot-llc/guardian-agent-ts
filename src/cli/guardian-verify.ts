@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * guardian-verify — log integrity verification CLI. SPEC §2.5, §2.6.
  *
@@ -132,3 +133,31 @@ export function usageString(): string {
     '  --help, -h       Show this message.',
   ].join('\n');
 }
+
+/* c8 ignore start */
+async function main(): Promise<void> {
+  const parsed = parseArgs(process.argv.slice(2));
+  if (parsed === null) {
+    process.stderr.write(usageString() + '\n');
+    process.exit(2);
+  }
+  const result = await runVerify(parsed);
+  if (result.exitCode === 0) {
+    process.stdout.write(result.message + '\n');
+  } else {
+    process.stderr.write(result.message + '\n');
+  }
+  process.exit(result.exitCode);
+}
+/* c8 ignore stop */
+
+const isMain =
+  typeof process !== 'undefined' &&
+  typeof process.argv !== 'undefined' &&
+  process.argv[1] !== undefined &&
+  /guardian-verify(\.js|\.ts)?$/.test(process.argv[1]);
+/* c8 ignore start */
+if (isMain) {
+  void main();
+}
+/* c8 ignore stop */

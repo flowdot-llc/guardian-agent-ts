@@ -38,6 +38,11 @@
       "import": "./dist/index.js"
     }
   },
+  "bin": {
+    "guardian-verify": "./dist/cli/guardian-verify.js",
+    "guardian-baseline": "./dist/cli/guardian-baseline.js",
+    "guardian-correlator": "./dist/cli/guardian-correlator.js"
+  },
   "files": [
     "dist",
     "README.md",
@@ -58,7 +63,8 @@
     "demo:1": "tsx examples/demo/demo-1-tamper.ts",
     "demo:2": "tsx examples/demo/demo-2-gate.ts",
     "demo:3": "tsx examples/demo/demo-3-honeytoken.ts",
-    "clean": "rm -rf dist"
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepublishOnly": "npm run clean && npm test && npm run build"
   },
   "dependencies": {
     "yaml": "^2.4.0",

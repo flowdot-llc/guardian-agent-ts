@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * guardian-baseline — offline behavioral-baseline CLI. SPEC §13 (v0.5.0+).
  *

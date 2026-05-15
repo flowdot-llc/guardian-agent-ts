@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * guardian-correlator — offline cross-surface correlation CLI. SPEC §14
  * (v0.5.0+).

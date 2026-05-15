@@ -2,9 +2,13 @@
 
 > TypeScript reference implementation of the [guardian-agent spec](https://github.com/flowdot-llc/guardian-agent/blob/main/SPEC.md). A runtime supervisor for tool-using LLM agents: tamper-evident audit log, tool-permission policy, HITL approval gates, emergency-stop, plus a runtime-safety layer (honeytokens, capability tripwires, per-class rate limits, two-key operator gates, heartbeat) and offline analysis tools.
 
-**Status**: pre-alpha · tracks SPEC v0.5 · v0.10 feature milestone hit · interface stabilizing · not yet on npm
+**Status**: v0.1.0 on npm · tracks SPEC v0.5 · v0.10 feature milestone hit · interface stabilizing toward v1.0
 
-> Note on versioning: milestone labels in this README (v0.1, v0.2, …, v0.10) refer to **feature milestones** in the [ROADMAP](./ROADMAP.md), not semver. The package's npm semver lives in `package.json` and will track stable releases once the API freezes for npm publication.
+```bash
+npm install @flowdot.ai/guardian-agent
+```
+
+> Note on versioning: milestone labels in this README (v0.1, v0.2, …, v0.10) refer to **feature milestones** in the [ROADMAP](./ROADMAP.md), not semver. The package's npm semver lives in `package.json`. Until the public API freezes for v1.0, expect minor-version churn — pin a specific minor in production.
 
 The Python reference implementation lives at [`flowdot-llc/guardian-agent`](https://github.com/flowdot-llc/guardian-agent). This repository is the parallel TypeScript implementation. Both conform to the same versioned [spec](https://github.com/flowdot-llc/guardian-agent/blob/main/SPEC.md); the spec is the canonical contract, not either implementation.
 
@@ -264,7 +268,9 @@ Full plan: [ROADMAP.md](./ROADMAP.md). Canonical spec: [SPEC.md](https://github.
 
 ## License
 
-AGPL-3.0-or-later. See [LICENSE](./LICENSE). Commercial license: `licensing@flowdot.ai`.
+AGPL-3.0-or-later. See [LICENSE](./LICENSE).
+
+**Dual licensing.** FlowDot LLC, as sole copyright holder of this code, also licenses it under proprietary terms for use inside its own commercial products (`@flowdot.ai/cli`, `@flowdot.ai/mcp-server`, etc.). This is the standard open-core arrangement and does not affect downstream users — your obligations under AGPL-3.0 are exactly as written in [LICENSE](./LICENSE). If you want a commercial license for your own (non-FlowDot) use, contact `licensing@flowdot.ai`.
 
 ## Citation
 
