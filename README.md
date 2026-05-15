@@ -225,7 +225,7 @@ Full plan: [ROADMAP.md](./ROADMAP.md). Canonical spec: [SPEC.md](https://github.
 
 ## Verification + testing posture
 
-- **535 tests passing, 100% line + branch + function coverage** on the library.
+- **539 tests passing, 100% line + branch + function coverage** on the library.
 - **Negative-corpus harness** replays real production audit logs (`~/.flowdot/audit/{cli,mcp}.jsonl`) through every safety detector at default thresholds; required outcome is zero false positives, and the bar is met.
 - **No false E-stops, ever** is a hard rule. Any mechanism that could E-stop a session ships with thresholds calibrated against real-workload data.
 

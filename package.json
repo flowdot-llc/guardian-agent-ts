@@ -55,6 +55,9 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "example:quickstart": "tsx examples/quickstart.ts",
+    "demo:1": "tsx examples/demo/demo-1-tamper.ts",
+    "demo:2": "tsx examples/demo/demo-2-gate.ts",
+    "demo:3": "tsx examples/demo/demo-3-honeytoken.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
