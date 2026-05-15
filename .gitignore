@@ -32,6 +32,11 @@ coverage/
 audit.jsonl
 *.audit.jsonl
 audit-logs/
+# Demo-run regenerable artifacts. The .gif files ARE committed (the README
+# embeds them); the .cast recordings and the demo audit logs are regenerated
+# every time the demo scripts or record-all.ps1 run, so they're ignored.
+examples/demo/audit-demo-*.jsonl
+examples/demo/*.cast
 
 # Local policy overrides:
 permissions.local.yaml

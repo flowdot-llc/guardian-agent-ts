@@ -48,6 +48,39 @@ The library bundles three concentric layers. Each is independently usable; toget
 
 ---
 
+## Demos
+
+Three minimal demos show the supervisor enforcing a single primitive end-to-end. Each one is a deterministic `tsx` script — anyone with this repo can reproduce these on their machine by cloning and running `npm install && npm run demo:N`.
+
+### Demo 1 — Tamper-evident audit log
+
+Hash-chained + ed25519-signed audit records detect any post-hoc edit, down to a single byte. ([`examples/demo/demo-1-tamper.ts`](./examples/demo/demo-1-tamper.ts))
+
+![Tamper-evident audit log](./examples/demo/demo-1-tamper.gif)
+
+### Demo 2 — HITL approval gate
+
+A tool tagged `requiresOperatorConfirmation: true` suspends dispatch and asks a configured `operatorGate` for a decision. Denial means the tool body never executes. ([`examples/demo/demo-2-gate.ts`](./examples/demo/demo-2-gate.ts))
+
+![HITL approval gate](./examples/demo/demo-2-gate.gif)
+
+### Demo 3 — Honeytoken catches exfiltration
+
+Planted tokens that never appear in real workflows. Any tool call whose args contain one is, by construction, an attack. Hit triggers `x_honeytoken_triggered` + emergency-stop, and the E-stop is sticky — subsequent calls also throw. ([`examples/demo/demo-3-honeytoken.ts`](./examples/demo/demo-3-honeytoken.ts))
+
+![Honeytoken catches exfiltration](./examples/demo/demo-3-honeytoken.gif)
+
+Run them yourself:
+
+```bash
+npm install
+npm run demo:1   # tamper-evident audit log
+npm run demo:2   # HITL approval gate
+npm run demo:3   # honeytoken catches exfiltration
+```
+
+---
+
 ## Quickstart
 
 ```typescript

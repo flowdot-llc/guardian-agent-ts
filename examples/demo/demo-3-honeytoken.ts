@@ -151,6 +151,9 @@ async function main(): Promise<void> {
   console.log('Result: honeytokens fire deterministically. Zero false positives');
   console.log('        by construction — these values never appear in real flows.');
   console.log('────────────────────────────────────────────────────────');
+
+  // Hold the final frame for video capture.
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 }
 
 main().catch((err) => {

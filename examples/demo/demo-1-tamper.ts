@@ -121,6 +121,9 @@ async function main(): Promise<void> {
   console.log('');
   console.log('Result: the supervisor detected the single-byte tamper.');
   console.log('────────────────────────────────────────────────────────');
+
+  // Hold the final frame for video capture.
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 }
 
 main().catch((err) => {
