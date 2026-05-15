@@ -3,12 +3,18 @@
  * SPEC: see flowdot-llc/guardian-agent/SPEC.md (v0.2.0).
  */
 
-export const VERSION = '0.1.0' as const;
+export const VERSION = '0.2.0' as const;
 export { SPEC_VERSION } from './types.js';
 
 // runtime
 export { GuardianRuntime } from './runtime/runtime.js';
-export type { GuardianRuntimeOptions, ToolOptions } from './runtime/runtime.js';
+export type {
+  GuardianRuntimeOptions,
+  ToolOptions,
+  PolicyGate,
+  PolicyIdentifierFn,
+  PolicyIdentifierCall,
+} from './runtime/runtime.js';
 export {
   defineHoneytokenSet,
   matchPhantomTool,
@@ -112,16 +118,34 @@ export type {
   OperatorConfirmationGate,
   OperatorConfirmationRequest,
   OperatorConfirmationResponse,
+  PolicyDrilldownContext,
+  PolicyPersistDecision,
 } from './gate/two-key.js';
 
-// policy attribution path matching (model/provider/aggregator/surface globs)
+// policy (v0.2.0+ — evaluator, store, types now part of the public surface)
+export { PolicyEvaluator, globMatch } from './policy/evaluator.js';
+export { PolicyStore } from './policy/store.js';
+export type { PolicyStoreOptions } from './policy/store.js';
+export { parsePolicy, validatePolicy } from './policy/loader.js';
+export { signPayload, verifyPayload } from './policy/integrity.js';
+export type { SignedPolicyFile } from './policy/integrity.js';
+export { loadOrCreateSiteKey, siteKeyFromBytes, SITE_KEY_BYTES } from './policy/site-key.js';
+export type { SiteKey } from './policy/site-key.js';
+export { policyStoreGate } from './policy/gate-adapter.js';
 export {
   flatGlobMatch,
   matchAttributionPath,
   renderAttributionPath,
   ATTRIBUTION_MISSING_SEGMENT,
 } from './policy/attribution.js';
-export type { PolicyWhen } from './policy/types.js';
+export type {
+  Policy,
+  PolicyRule,
+  PolicyScope,
+  PolicyDecision,
+  PolicyEvaluation,
+  PolicyWhen,
+} from './policy/types.js';
 
 // notify
 export type { Notifier, NotificationEvent, NotificationKind } from './notify/types.js';
@@ -146,4 +170,5 @@ export {
   GuardianHaltedError,
   GuardianConfigError,
   GuardianIntegrityError,
+  PolicyDenialError,
 } from './errors.js';

@@ -220,6 +220,34 @@ describe('validatePolicy (rejection paths)', () => {
     ).toThrow(/model.id/);
   });
 
+  it('preserves attribution_path in when (v0.2 fix)', () => {
+    const p = validatePolicy({
+      version: '0.2',
+      agent_id: 'a',
+      defaults: { scope: 'prompt' },
+      rules: [
+        {
+          tool: 'llm.call:*',
+          scope: 'forever',
+          decision: 'allow',
+          when: { attribution_path: 'FlowDot/*/Anthropic/claude-*' },
+        },
+      ],
+    });
+    expect(p.rules[0]?.when?.attribution_path).toBe('FlowDot/*/Anthropic/claude-*');
+  });
+
+  it('rejects non-string attribution_path in when', () => {
+    expect(() =>
+      validatePolicy({
+        version: '0.2',
+        agent_id: 'a',
+        defaults: { scope: 'prompt' },
+        rules: [{ tool: 't', scope: 'session', when: { attribution_path: 7 } }],
+      }),
+    ).toThrow(/attribution_path/);
+  });
+
   it('accepts a rule without optional fields', () => {
     const p = validatePolicy({
       version: '0.2',

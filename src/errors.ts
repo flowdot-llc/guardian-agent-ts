@@ -42,3 +42,40 @@ export class GuardianIntegrityError extends Error {
     this.detail = detail;
   }
 }
+
+/**
+ * Thrown inside a tool wrapper when the configured policy gate denies the
+ * call (either a `deny` rule matched, or operator confirmation came back
+ * denied/timed out from a `prompt` decision). v0.2.0+.
+ *
+ * Distinct from {@link GuardianHaltedError}: a policy denial is per-call
+ * (next call may be allowed by a different rule, or after a re-prompt), and
+ * does NOT press the local E-stop. An E-stop denial throws
+ * `GuardianHaltedError` instead.
+ */
+export class PolicyDenialError extends Error {
+  readonly category: string;
+  readonly identifier: string;
+  readonly policyIdentifier: string;
+  readonly scope: string;
+  readonly ruleTool: string | undefined;
+
+  constructor(
+    message: string,
+    detail: {
+      category: string;
+      identifier: string;
+      policyIdentifier: string;
+      scope: string;
+      ruleTool?: string;
+    },
+  ) {
+    super(message);
+    this.name = 'PolicyDenialError';
+    this.category = detail.category;
+    this.identifier = detail.identifier;
+    this.policyIdentifier = detail.policyIdentifier;
+    this.scope = detail.scope;
+    this.ruleTool = detail.ruleTool;
+  }
+}

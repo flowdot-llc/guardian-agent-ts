@@ -1,6 +1,6 @@
 {
   "name": "@flowdot.ai/guardian-agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript reference implementation of the guardian-agent spec: a runtime supervisor for tool-using LLM agents (audit log, tool-permission scoping, HITL approval gates, emergency-stop).",
   "keywords": [
     "ai-safety",

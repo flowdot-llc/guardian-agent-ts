@@ -26,6 +26,54 @@
 
 import { ulid } from 'ulidx';
 
+import type { PolicyRule, PolicyScope, PolicyWhen } from '../policy/types.js';
+
+/**
+ * Drill-down context attached to a policy-prompt gate request (v0.2.0+).
+ *
+ * The runtime populates this whenever an operator gate fires because of a
+ * policy `prompt` decision (NOT for `requiresOperatorConfirmation: true` —
+ * that path retains the legacy shape with `policy_context: undefined`). The
+ * field lets the operator UI present scope choices ("exact tool", "any tool
+ * on this MCP server", "any MCP tool") whose patterns flow back via
+ * {@link OperatorConfirmationResponse.persist_as}.
+ */
+export interface PolicyDrilldownContext {
+  /** Policy category (the `<category>` part of the composite identifier). */
+  category: string;
+  /** Exact identifier the call would match against (`<identifier>` after `:`). */
+  exact_identifier: string;
+  /** Full composite key (`<category>:<identifier>`). */
+  policy_identifier: string;
+  /**
+   * Suggested drill-down axes. Each axis is a {pattern, label} the operator
+   * can pick; the chosen pattern flows back via `response.persist_as.tool`.
+   * Library defaults: exact / container-wide (`<container>/*`) / category-wide
+   * (`<category>:*`). Consumers can override via gate adapter.
+   */
+  drilldown_axes: Array<{ key: string; pattern: string; label: string }>;
+}
+
+/**
+ * Operator's persistence intent for a policy-prompt response (v0.2.0+).
+ *
+ * When the operator says "Yes for this session", "Yes forever", or "Banned
+ * forever", the UI populates this so the runtime can persist the rule via
+ * `PolicyGate.persist` before resuming dispatch. Mirrors {@link PolicyRule}.
+ */
+export interface PolicyPersistDecision {
+  /** Tool/identifier pattern (e.g., `mcp.tool:youtube/*`). */
+  tool: string;
+  /** Persistence scope. */
+  scope: PolicyScope;
+  /** Decision when matched. Omit for `scope: banned` (implies `deny`). */
+  decision?: Exclude<PolicyRule['decision'], undefined>;
+  /** Optional conditional clause (e.g., `{ 'model.provider': 'anthropic' }`). */
+  when?: PolicyWhen;
+  /** Optional free-text note. */
+  notes?: string;
+}
+
 /**
  * Payload supplied to the gate when a suspended call asks for confirmation.
  */
@@ -44,6 +92,11 @@ export interface OperatorConfirmationRequest {
   agent_id: string;
   /** Session id stamped on the audit row. */
   session_id: string;
+  /**
+   * Drill-down context when this gate fired from a policy `prompt` decision.
+   * Absent for `requiresOperatorConfirmation: true` gates. v0.2.0+.
+   */
+  policy_context?: PolicyDrilldownContext;
 }
 
 /**
@@ -56,6 +109,14 @@ export interface OperatorConfirmationResponse {
   operator_id?: string;
   /** Free-text reason; primarily for denied + timeout cases. */
   reason?: string;
+  /**
+   * Persist this rule before resuming dispatch (v0.2.0+). Used for the
+   * drill-down "Yes - session/forever" or "No - banned" flows. The library
+   * forwards the rule to {@link PolicyGate.persist} if implemented; if the
+   * gate has no persist hook, the rule is silently dropped (the immediate
+   * decision still applies; only persistence is no-op).
+   */
+  persist_as?: PolicyPersistDecision;
 }
 
 /**

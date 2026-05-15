@@ -121,6 +121,12 @@ function validateRule(raw: unknown, index: number): PolicyRule {
       }
       validatedWhen['model.id'] = when['model.id'];
     }
+    if (when.attribution_path !== undefined) {
+      if (typeof when.attribution_path !== 'string') {
+        throw new GuardianConfigError(`rule[${index}].when.attribution_path must be a string`);
+      }
+      validatedWhen.attribution_path = when.attribution_path;
+    }
   }
 
   const out: PolicyRule = {
