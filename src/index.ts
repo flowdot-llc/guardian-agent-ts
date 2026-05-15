@@ -1,5 +1,5 @@
 /**
- * @flowdot-llc/guardian-agent — public API surface.
+ * @flowdot.ai/guardian-agent — public API surface.
  * SPEC: see flowdot-llc/guardian-agent/SPEC.md (v0.2.0).
  */
 

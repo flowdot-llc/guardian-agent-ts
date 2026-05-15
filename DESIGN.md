@@ -1,4 +1,4 @@
-# DESIGN — @flowdot-llc/guardian-agent (TypeScript)
+# DESIGN — @flowdot.ai/guardian-agent (TypeScript)
 
 Internal design doc. Locks the module structure and public API before Phase 3 implementation begins.
 

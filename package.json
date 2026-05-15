@@ -1,5 +1,5 @@
 {
-  "name": "@flowdot-llc/guardian-agent",
+  "name": "@flowdot.ai/guardian-agent",
   "version": "0.1.0",
   "description": "TypeScript reference implementation of the guardian-agent spec: a runtime supervisor for tool-using LLM agents (audit log, tool-permission scoping, HITL approval gates, emergency-stop).",
   "keywords": [

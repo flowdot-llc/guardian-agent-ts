@@ -1,4 +1,4 @@
-# @flowdot-llc/guardian-agent — roadmap
+# @flowdot.ai/guardian-agent — roadmap
 
 **Last updated**: 2026-05-14
 

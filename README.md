@@ -1,4 +1,4 @@
-# @flowdot-llc/guardian-agent
+# @flowdot.ai/guardian-agent
 
 > TypeScript reference implementation of the [guardian-agent spec](https://github.com/flowdot-llc/guardian-agent/blob/main/SPEC.md). A runtime supervisor for tool-using LLM agents: tamper-evident audit log, tool-permission policy, HITL approval gates, emergency-stop, plus a runtime-safety layer (honeytokens, capability tripwires, per-class rate limits, two-key operator gates, heartbeat) and offline analysis tools.
 
@@ -88,7 +88,7 @@ import {
   AuditLogWriter,
   EStopLocal,
   GuardianRuntime,
-} from '@flowdot-llc/guardian-agent';
+} from '@flowdot.ai/guardian-agent';
 
 const audit = new AuditLogWriter({
   path: './audit.jsonl',
@@ -132,7 +132,7 @@ import {
   GuardianRuntime,
   httpAttestor,
   defineHoneytokenSet,
-} from '@flowdot-llc/guardian-agent';
+} from '@flowdot.ai/guardian-agent';
 
 const audit = new AuditLogWriter({
   path: './audit.jsonl',
@@ -172,7 +172,7 @@ import {
   GuardianRuntime,
   callbackOperatorGate,
   HeartbeatMonitor,
-} from '@flowdot-llc/guardian-agent';
+} from '@flowdot.ai/guardian-agent';
 
 const runtime = new GuardianRuntime({
   agentId: 'agent_demo',
@@ -269,7 +269,7 @@ AGPL-3.0-or-later. See [LICENSE](./LICENSE). Commercial license: `licensing@flow
 ## Citation
 
 ```
-Mousseau, E. (2026). @flowdot-llc/guardian-agent: TypeScript reference
+Mousseau, E. (2026). @flowdot.ai/guardian-agent: TypeScript reference
 implementation of the guardian-agent spec. v0.10.
 https://github.com/flowdot-llc/guardian-agent-ts
 ```

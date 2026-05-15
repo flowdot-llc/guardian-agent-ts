@@ -1,5 +1,5 @@
 /**
- * @flowdot-llc/guardian-agent quickstart example.
+ * @flowdot.ai/guardian-agent quickstart example.
  *
  * Runs a tiny synthetic "trading agent" against a fake brokerage tool, with
  * all four supervisor primitives engaged: audit log, policy enforcement,
@@ -70,7 +70,7 @@ async function main(): Promise<void> {
     { name: 'place_order' },
   );
 
-  console.log('@flowdot-llc/guardian-agent quickstart');
+  console.log('@flowdot.ai/guardian-agent quickstart');
   console.log(`  audit log: ${AUDIT_LOG}`);
   console.log(`  policy:    ${POLICY_PATH}`);
   console.log('');
