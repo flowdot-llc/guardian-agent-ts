@@ -2,7 +2,9 @@
 
 > TypeScript reference implementation of the [guardian-agent spec](https://github.com/flowdot-llc/guardian-agent/blob/main/SPEC.md). A runtime supervisor for tool-using LLM agents: tamper-evident audit log, tool-permission policy, HITL approval gates, emergency-stop, plus a runtime-safety layer (honeytokens, capability tripwires, per-class rate limits, two-key operator gates, heartbeat) and offline analysis tools.
 
-**Status**: pre-alpha · tracks spec v0.5+ · interface stabilizing · not yet on npm
+**Status**: pre-alpha · tracks SPEC v0.5 · v0.10 feature milestone hit · interface stabilizing · not yet on npm
+
+> Note on versioning: milestone labels in this README (v0.1, v0.2, …, v0.10) refer to **feature milestones** in the [ROADMAP](./ROADMAP.md), not semver. The package's npm semver lives in `package.json` and will track stable releases once the API freezes for npm publication.
 
 The Python reference implementation lives at [`flowdot-llc/guardian-agent`](https://github.com/flowdot-llc/guardian-agent). This repository is the parallel TypeScript implementation. Both conform to the same versioned [spec](https://github.com/flowdot-llc/guardian-agent/blob/main/SPEC.md); the spec is the canonical contract, not either implementation.
 
