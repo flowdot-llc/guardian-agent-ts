@@ -25,9 +25,13 @@ Cross-language interop is real and intended:
 - A gate callback URL hosted by one can be invoked by the other.
 - An `estop` triggered in one produces an audit event identical in structure to one triggered in the other.
 
+![One spec, two runtimes: a canonical SPEC.md in the center that both the Python reference (guardian-agent, for the research and eval ecosystem) and the TypeScript reference (@flowdot.ai/guardian-agent, for production runtimes) conform to, with full interop between them — an audit log written by one is verified by the other, the same permissions.yaml, a shared gate protocol, and an identical estop event](./docs/diagrams/spec-two-runtimes.jpg)
+
 ## What's included
 
 The library bundles three concentric layers. Each is independently usable; together they form the canonical supervisor.
+
+![Feature stack shipped through the v0.10 milestone: a trust foundation (v0.1 to v0.7) of hash-chained ed25519 audit log, permission policy, HITL gates with four adapters, and emergency-stop; a runtime-safety layer (v0.8 to v0.9) of external attestation, honeytokens, Yellow-line capability tripwires, per-capability rate limits, two-key operator auth, and dead-man heartbeat; and offline analysis (v0.10) of guardian-baseline and guardian-correlator — 539 tests at 100% coverage](./docs/diagrams/feature-stack.jpg)
 
 **Trust foundation** (v0.1 – v0.7):
 

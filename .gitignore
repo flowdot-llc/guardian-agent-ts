@@ -46,3 +46,4 @@ permissions.local.yaml
 *.pem
 *.key
 keys/
+/.flowdot
