@@ -81,7 +81,7 @@ describe('cliApprovalGate (integration via PassThrough streams)', () => {
     const { output } = await runGateWith('1');
     expect(output).toContain('approval required');
     expect(output).toContain('tool.x');
-    expect(output).toContain('agent: ' === '' ? 'never' : 'Agent');
+    expect(output).toContain('Agent');
     expect(output).toContain('"y":1');
   });
 

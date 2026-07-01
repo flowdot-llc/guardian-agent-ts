@@ -59,22 +59,29 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "example:quickstart": "tsx examples/quickstart.ts",
     "demo:1": "tsx examples/demo/demo-1-tamper.ts",
     "demo:2": "tsx examples/demo/demo-2-gate.ts",
     "demo:3": "tsx examples/demo/demo-3-honeytoken.ts",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "prepublishOnly": "npm run clean && npm test && npm run build"
+    "verify-pack": "node scripts/verify-pack.mjs",
+    "prepublishOnly": "npm run clean && npm run lint && npm test && npm run build && npm run verify-pack"
   },
   "dependencies": {
-    "yaml": "^2.4.0",
-    "ulidx": "^2.3.0"
+    "ulidx": "^2.3.0",
+    "yaml": "^2.4.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/node": "^20.12.0",
     "@vitest/coverage-v8": "^1.4.0",
-    "typescript": "^5.4.0",
+    "eslint": "^9.39.4",
+    "globals": "^15.15.0",
     "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.62.1",
     "vitest": "^1.4.0"
   },
   "publishConfig": {

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { AuditLogReader } from '../../src/audit/reader.js';
 import { AuditLogWriter } from '../../src/audit/writer.js';
@@ -11,7 +11,6 @@ import {
   nullAttestor,
   payloadFromRecord,
   type AttestationPayload,
-  type AttestationReceipt,
   type Attestor,
 } from '../../src/audit/attestor.js';
 import type { AuditRecord } from '../../src/types.js';
@@ -284,7 +283,6 @@ describe('AuditLogWriter + attestor', () => {
   it('stringifies non-Error throws when recording attestation failure', async () => {
     const a: Attestor = {
       publish: () => {
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
         throw 'plain string failure'; // non-Error
       },
     };

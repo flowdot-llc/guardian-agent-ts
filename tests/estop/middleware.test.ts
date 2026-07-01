@@ -8,7 +8,6 @@ import { AuditLogWriter } from '../../src/audit/writer.js';
 import { EStopHub, InMemoryEStopStateStore } from '../../src/estop/hub.js';
 import {
   createEStopMiddleware,
-  type MiddlewareRequest,
   type MiddlewareResponse,
 } from '../../src/estop/middleware.js';
 

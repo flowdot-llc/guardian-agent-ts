@@ -2,8 +2,9 @@
  * Single-writer append-only JSONL audit log with hash chain. SPEC §2.
  */
 
-import { open, FileHandle } from 'node:fs/promises';
-import { readFileSync, existsSync } from 'node:fs';
+import type { FileHandle } from 'node:fs/promises';
+import { open } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import type { KeyObject } from 'node:crypto';
 import { ulid } from 'ulidx';
 
@@ -307,14 +308,36 @@ export class AuditLogWriter {
    * seed the hash chain and expose the recovered record to onTipRecovered.
    */
   private async recoverTipRecord(): Promise<AuditRecord | null> {
-    const buf = readFileSync(this.path, 'utf-8');
-    if (buf.length === 0) return null;
-    const lines = buf.split('\n');
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (line === undefined || line.length === 0) continue;
-      return JSON.parse(line) as AuditRecord;
+    if (!existsSync(this.path)) return null;
+    const handle = await open(this.path, 'r');
+    try {
+      const { size } = await handle.stat();
+      if (size === 0) return null;
+      // Read only the tail of the log in a growing window. The full file can
+      // exceed Node's max string length (~512 MiB), so we must never slurp it
+      // whole — we only need the last non-empty line to seed the hash chain.
+      let chunkSize = 64 * 1024;
+      for (;;) {
+        const readLen = Math.min(chunkSize, size);
+        const start = size - readLen;
+        const buf = Buffer.alloc(readLen);
+        await handle.read(buf, 0, readLen, start);
+        const lines = buf.toString('utf-8').split('\n');
+        // When the window doesn't begin at offset 0 its first line may be a
+        // partial record (or a sliced multibyte char), so skip it.
+        const firstComplete = start === 0 ? 0 : 1;
+        for (let i = lines.length - 1; i >= firstComplete; i--) {
+          const line = lines[i];
+          if (line === undefined || line.length === 0) continue;
+          return JSON.parse(line) as AuditRecord;
+        }
+        // No complete non-empty line in this window. Stop if we've read the
+        // whole file; otherwise widen and try again.
+        if (readLen >= size) return null;
+        chunkSize *= 4;
+      }
+    } finally {
+      await handle.close();
     }
-    return null;
   }
 }

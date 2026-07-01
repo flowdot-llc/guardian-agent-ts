@@ -7,7 +7,7 @@ import {
 
 describe('MultiRateLimiter', () => {
   it('per-class bucket: read at 50/s allows 50 in a burst', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: { read: { maxCallsPerSecond: 50 } },
       now: () => now,
@@ -24,7 +24,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('credential bucket at 2/s denies the 3rd in a burst', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: { credential: { maxCallsPerSecond: 2 } },
       now: () => now,
@@ -37,7 +37,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('buckets are independent per class', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: {
         credential: { maxCallsPerSecond: 1 },
@@ -54,7 +54,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('multi-class tool fails at the FIRST class to deny (iteration order)', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: {
         credential: { maxCallsPerSecond: 1 },
@@ -69,7 +69,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('class with no bucket and no default passes through', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({ buckets: { read: { maxCallsPerSecond: 1 } }, now: () => now });
     // 'unknown' is not configured and no defaultBucket → unlimited
     for (let i = 0; i < 100; i++) {
@@ -78,7 +78,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('default bucket catches classes without explicit config', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: {},
       defaultBucket: { maxCallsPerSecond: 2 },
@@ -102,7 +102,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('honors custom bucketCapacity', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: { credential: { maxCallsPerSecond: 1, bucketCapacity: 5 } },
       now: () => now,
@@ -114,7 +114,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('snapshot reports per-class current tokens', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: { read: { maxCallsPerSecond: 50 } },
       defaultBucket: { maxCallsPerSecond: 3 },
@@ -133,7 +133,7 @@ describe('MultiRateLimiter', () => {
   });
 
   it('first-denial-no-refund: earlier-class buckets consumed even on later denial', () => {
-    let now = 0;
+    const now = 0;
     const rl = new MultiRateLimiter({
       buckets: {
         write: { maxCallsPerSecond: 10 },

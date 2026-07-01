@@ -15,7 +15,7 @@
  */
 
 import { PolicyEvaluator } from './evaluator.js';
-import { PolicyStore } from './store.js';
+import type { PolicyStore } from './store.js';
 import type { Policy, PolicyEvaluation, PolicyRule } from './types.js';
 import type { ModelAttribution } from '../types.js';
 import type { PolicyGate } from '../runtime/runtime.js';

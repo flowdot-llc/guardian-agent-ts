@@ -82,8 +82,8 @@ async function main(): Promise<void> {
   // 3. Verify — should pass.
   console.log('Step 1: verify the unaltered chain + signatures');
   let reader = await AuditLogReader.open(AUDIT_PATH);
-  let chainCount = await reader.verifyChain();
-  let sigCount = await reader.verifySignatures(publicKey);
+  const chainCount = await reader.verifyChain();
+  const sigCount = await reader.verifySignatures(publicKey);
   await reader.close();
   console.log(`  ✔ chain OK (${chainCount} records)`);
   console.log(`  ✔ signatures OK (${sigCount} records)`);

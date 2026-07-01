@@ -2,9 +2,11 @@
  * AuditLogReader — iterate + verify hash chain. SPEC §2.
  */
 
-import { open, FileHandle } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
+import { open } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { createInterface, Interface } from 'node:readline';
+import type { Interface } from 'node:readline';
+import { createInterface } from 'node:readline';
 import type { KeyObject } from 'node:crypto';
 
 import type { AuditRecord } from '../types.js';

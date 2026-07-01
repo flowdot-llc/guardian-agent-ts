@@ -29,6 +29,7 @@ import {
   type AgentProfile,
   type DeviationReport,
 } from '../audit/stats.js';
+import type { AuditRecord } from '../types.js';
 
 export interface BaselineArgs {
   path: string | undefined;
@@ -113,8 +114,8 @@ async function loadRecords(
 
 async function readAll(
   reader: AuditLogReader,
-): Promise<import('../types.js').AuditRecord[]> {
-  const out: import('../types.js').AuditRecord[] = [];
+): Promise<AuditRecord[]> {
+  const out: AuditRecord[] = [];
   for await (const r of reader.records()) out.push(r);
   return out;
 }
@@ -132,7 +133,7 @@ export async function runBaseline(args: BaselineArgs): Promise<BaselineRunResult
       reports: [],
     };
   }
-  let records: import('../types.js').AuditRecord[];
+  let records: AuditRecord[];
   try {
     records = await loadRecords(args.path);
   } catch (err) {

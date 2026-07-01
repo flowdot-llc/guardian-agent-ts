@@ -2,7 +2,8 @@
  * cliApprovalGate — synchronous-feeling stdin prompt. SPEC §4.3.
  */
 
-import { createInterface, Interface } from 'node:readline';
+import type { Interface } from 'node:readline';
+import { createInterface } from 'node:readline';
 
 import type { ApprovalGate, GateRequest, GateResponse } from './types.js';
 
