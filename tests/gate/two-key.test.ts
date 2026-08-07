@@ -141,6 +141,100 @@ describe('awaitWithTimeout', () => {
   });
 });
 
+describe('operator gate model attribution (v0.2.4+)', () => {
+  // A gate UI that cannot see which model asked must guess from ambient state,
+  // and that guess is wrong whenever one agent dispatches on behalf of another
+  // (a spawned child on a different model, a background job). A rule persisted
+  // from such a prompt pins a model that never ran and can never match the
+  // dispatch that created it.
+  async function captureRequest(
+    toolOpts: Record<string, unknown>,
+  ): Promise<OperatorConfirmationRequest> {
+    const path = join(tmp, `audit-${Math.random().toString(36).slice(2)}.jsonl`);
+    const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });
+    let seen: OperatorConfirmationRequest | undefined;
+    const gate = callbackOperatorGate((req) => {
+      seen = req;
+      return { decision: 'approved', operator_id: 'alice' };
+    });
+    const rt = new GuardianRuntime({ agentId: 'a', sessionId: 's', audit, operatorGate: gate });
+    await rt.tool(async () => 'ok', {
+      name: 'sensitive',
+      requiresOperatorConfirmation: true,
+      operatorConfirmationReason: 'capability_redline',
+      ...toolOpts,
+    })();
+    await rt.close();
+    if (!seen) throw new Error('the gate was never asked');
+    return seen;
+  }
+
+  it('carries the dispatching model on the request', async () => {
+    const req = await captureRequest({
+      model: { provider: 'flowdot', id: 'redpill/google/gemini-2.5-flash-lite' },
+    });
+    expect(req.model).toMatchObject({
+      provider: 'flowdot',
+      id: 'redpill/google/gemini-2.5-flash-lite',
+    });
+  });
+
+  it('carries the per-call model in preference to the runtime default', async () => {
+    const path = join(tmp, 'audit-default.jsonl');
+    const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });
+    let seen: OperatorConfirmationRequest | undefined;
+    const gate = callbackOperatorGate((req) => {
+      seen = req;
+      return { decision: 'approved' };
+    });
+    const rt = new GuardianRuntime({
+      agentId: 'a',
+      sessionId: 's',
+      audit,
+      operatorGate: gate,
+      defaultModel: { provider: 'parent', id: 'parent-model' },
+    });
+    await rt.tool(async () => 'ok', {
+      name: 'sensitive',
+      requiresOperatorConfirmation: true,
+      model: { provider: 'child', id: 'child-model' },
+    })();
+    await rt.close();
+    expect(seen?.model).toMatchObject({ provider: 'child', id: 'child-model' });
+  });
+
+  it('falls back to the runtime default when the call declares none', async () => {
+    const path = join(tmp, 'audit-fallback.jsonl');
+    const audit = new AuditLogWriter({ path, agentId: 'a', sessionId: 's' });
+    let seen: OperatorConfirmationRequest | undefined;
+    const gate = callbackOperatorGate((req) => {
+      seen = req;
+      return { decision: 'approved' };
+    });
+    const rt = new GuardianRuntime({
+      agentId: 'a',
+      sessionId: 's',
+      audit,
+      operatorGate: gate,
+      defaultModel: { provider: 'parent', id: 'parent-model' },
+    });
+    await rt.tool(async () => 'ok', {
+      name: 'sensitive',
+      requiresOperatorConfirmation: true,
+    })();
+    await rt.close();
+    expect(seen?.model).toMatchObject({ provider: 'parent', id: 'parent-model' });
+  });
+
+  it('omits the field entirely when nothing is attributed', async () => {
+    // Absent must stay absent: a consumer has to be able to tell "unattributed"
+    // from a real value, so it never substitutes ambient state silently.
+    const req = await captureRequest({});
+    expect(req.model).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(req, 'model')).toBe(false);
+  });
+});
+
 describe('GuardianRuntime + operator gate', () => {
   it('writes pending_operator → approved → tool_call → tool_result when gate approves', async () => {
     const path = join(tmp, 'audit.jsonl');

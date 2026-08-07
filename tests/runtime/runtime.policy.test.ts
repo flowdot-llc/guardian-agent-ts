@@ -172,6 +172,72 @@ describe('GuardianRuntime policy gate (v0.2)', () => {
     expect(recs.find((r) => r.kind === 'tool_result')).toBeUndefined();
   });
 
+  it('gives the drill-down prompt the dispatching model, so a persisted rule can pin the truth', async () => {
+    // The policy-prompt gate is the one that persists rules. Without the
+    // model on the request a UI can only guess it from ambient state, and a
+    // `when: { 'model.provider': … }` clause built from that guess pins a model
+    // that never ran — it can never match the dispatch that created it.
+    const store = new PolicyStore({ dir: tmp, agentId: 'test', defaultScope: 'prompt' });
+    const gate = policyStoreGate(store);
+    let seenModel: unknown = 'not-called';
+    const operatorGate = callbackOperatorGate(async (req) => {
+      seenModel = req.model;
+      return { decision: 'approved', operator_id: 'op-1' };
+    });
+    const audit = new AuditLogWriter({
+      path: join(tmp, 'audit-model.jsonl'),
+      agentId: 'test',
+      sessionId: 'sess',
+    });
+    const rt = buildRuntime(audit, {
+      policy: gate,
+      policyIdentifier: defaultIdentifier,
+      operatorGate,
+    });
+    await rt.tool(async () => 'ok', {
+      name: 'mcp__youtube__list_videos',
+      model: { provider: 'flowdot', id: 'redpill/google/gemini-2.5-flash-lite' },
+    })();
+    await rt.close();
+
+    expect(seenModel).toMatchObject({
+      provider: 'flowdot',
+      id: 'redpill/google/gemini-2.5-flash-lite',
+    });
+    // It must be the SAME attribution the policy gate evaluated against, not a
+    // parallel notion of "current model".
+    expect(seenModel).toEqual(
+      expect.objectContaining({ provider: 'flowdot', id: 'redpill/google/gemini-2.5-flash-lite' }),
+    );
+  });
+
+  it('leaves the drill-down model absent when the dispatch declares none', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'test', defaultScope: 'prompt' });
+    const gate = policyStoreGate(store);
+    let called = false;
+    let seenModel: unknown = 'not-called';
+    const operatorGate = callbackOperatorGate(async (req) => {
+      called = true;
+      seenModel = req.model;
+      return { decision: 'approved', operator_id: 'op-1' };
+    });
+    const audit = new AuditLogWriter({
+      path: join(tmp, 'audit-nomodel.jsonl'),
+      agentId: 'test',
+      sessionId: 'sess',
+    });
+    const rt = buildRuntime(audit, {
+      policy: gate,
+      policyIdentifier: defaultIdentifier,
+      operatorGate,
+    });
+    await rt.tool(async () => 'ok', { name: 'mcp__youtube__list_videos' })();
+    await rt.close();
+
+    expect(called).toBe(true);
+    expect(seenModel).toBeUndefined();
+  });
+
   it('routes to operator gate on prompt and persists the chosen drill-down', async () => {
     const store = new PolicyStore({ dir: tmp, agentId: 'test', defaultScope: 'prompt' });
     const gate = policyStoreGate(store);

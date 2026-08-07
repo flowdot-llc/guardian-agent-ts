@@ -27,6 +27,7 @@
 import { ulid } from 'ulidx';
 
 import type { PolicyRule, PolicyScope, PolicyWhen } from '../policy/types.js';
+import type { ModelAttribution } from '../types.js';
 
 /**
  * Drill-down context attached to a policy-prompt gate request (v0.2.0+).
@@ -97,6 +98,24 @@ export interface OperatorConfirmationRequest {
    * Absent for `requiresOperatorConfirmation: true` gates. v0.2.0+.
    */
   policy_context?: PolicyDrilldownContext;
+  /**
+   * The model attributed to the dispatch that raised this gate — exactly the
+   * `model` the caller declared on `runtime.tool(fn, { model })`, which is also
+   * what {@link PolicyGate.evaluate} was given and what lands on the audit row.
+   * Absent when the dispatch declared none. v0.2.4+.
+   *
+   * WHY: without it a gate UI cannot know which model asked, so it can only
+   * guess from ambient state (e.g. "the current chat's model"). That guess is
+   * wrong whenever one agent dispatches on behalf of another — a spawned child
+   * agent on a different model, a background job, a multi-model pipeline — and
+   * a rule persisted from that prompt (`when: { 'model.provider': … }`) then
+   * pins a model that never ran, so it can never match the dispatch that
+   * created it and the operator is re-prompted forever.
+   *
+   * Consumers MUST treat an absent value as "unattributed" and MUST NOT
+   * substitute ambient state in its place.
+   */
+  model?: ModelAttribution;
 }
 
 /**

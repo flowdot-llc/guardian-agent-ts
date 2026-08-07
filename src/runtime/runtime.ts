@@ -252,6 +252,12 @@ export class GuardianRuntime {
         );
       }
 
+      // Resolved before the two-key gate so BOTH operator-gate requests can
+      // carry it: a gate UI that cannot see which model asked has to guess from
+      // ambient state, and that guess is wrong whenever one agent dispatches on
+      // behalf of another (see OperatorConfirmationRequest.model).
+      const model = opts?.model ?? this.defaultModel;
+
       // Two-key operator authorization. SPEC §4.5. Fires BEFORE tool_call
       // (pending_operator means we haven't decided to dispatch yet).
       // Sequence: pending_operator → gate awaits → approved or denied,
@@ -280,6 +286,7 @@ export class GuardianRuntime {
           timeout_ms: timeoutMs,
           agent_id: this.agentId,
           session_id: this.sessionId,
+          ...(model === undefined ? {} : { model }),
         });
         const resolutionDetail: Record<string, unknown> = { gate_id: gateId };
         if (response.operator_id !== undefined) {
@@ -303,7 +310,6 @@ export class GuardianRuntime {
         }
       }
 
-      const model = opts?.model ?? this.defaultModel;
       const capabilities: CapabilityClass[] = opts?.capabilities ?? ['unknown'];
 
       // Build the shared tool sub-object once so capabilities are present
@@ -454,6 +460,7 @@ export class GuardianRuntime {
             agent_id: this.agentId,
             session_id: this.sessionId,
             policy_context: policyContext,
+            ...(model === undefined ? {} : { model }),
           };
           const response = await awaitWithTimeout(this.operatorGate, gateRequest);
 
