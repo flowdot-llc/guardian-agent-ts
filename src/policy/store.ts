@@ -23,7 +23,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import { GuardianIntegrityError } from '../errors.js';
 import type { Policy, PolicyRule, PolicyScope } from './types.js';
-import { validatePolicy } from './loader.js';
+import { validatePolicy, validatePolicyRule } from './loader.js';
 import { signPayload, verifyPayload, type SignedPolicyFile } from './integrity.js';
 import { loadOrCreateSiteKey, type SiteKey } from './site-key.js';
 
@@ -71,9 +71,15 @@ export class PolicyStore {
     };
   }
 
-  /** Add a rule. session/once go to session.yaml; forever/banned go to permissions.yaml. */
-  addRule(rule: PolicyRule): Promise<void> {
+  /**
+   * Add a rule. session/once go to session.yaml; forever/banned go to
+   * permissions.yaml. The rule is VALIDATED on write (v0.9+): unknown keys
+   * are stripped and invalid fields throw GuardianConfigError, so a caller
+   * can no longer sign an arbitrary object into the store.
+   */
+  addRule(rawRule: PolicyRule): Promise<void> {
     return this.enqueue(() => {
+      const rule = validatePolicyRule(rawRule);
       if (rule.scope === 'session' || rule.scope === 'once') {
         const cur = this.readSession();
         cur.rules = [

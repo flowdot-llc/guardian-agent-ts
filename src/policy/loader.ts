@@ -71,6 +71,16 @@ export function validatePolicy(raw: unknown): Policy {
   };
 }
 
+/**
+ * Validate a single rule object (exported v0.9+ so stores can validate on
+ * WRITE, not only on read — an unvalidated `addRule` let any caller sign an
+ * arbitrary object into permissions.yaml). Returns the whitelisted copy;
+ * throws GuardianConfigError on any invalid field.
+ */
+export function validatePolicyRule(raw: unknown, index = 0): PolicyRule {
+  return validateRule(raw, index);
+}
+
 function validateRule(raw: unknown, index: number): PolicyRule {
   if (!isObject(raw)) {
     throw new GuardianConfigError(`rule[${index}] must be an object`);

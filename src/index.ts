@@ -126,7 +126,7 @@ export type {
 export { PolicyEvaluator, globMatch } from './policy/evaluator.js';
 export { PolicyStore } from './policy/store.js';
 export type { PolicyStoreOptions } from './policy/store.js';
-export { parsePolicy, validatePolicy } from './policy/loader.js';
+export { parsePolicy, validatePolicy, validatePolicyRule } from './policy/loader.js';
 export { signPayload, verifyPayload } from './policy/integrity.js';
 export type { SignedPolicyFile } from './policy/integrity.js';
 export { loadOrCreateSiteKey, siteKeyFromBytes, SITE_KEY_BYTES } from './policy/site-key.js';

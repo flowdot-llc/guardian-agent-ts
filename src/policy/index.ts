@@ -15,7 +15,7 @@ export {
 } from './attribution.js';
 export { PolicyStore } from './store.js';
 export type { PolicyStoreOptions } from './store.js';
-export { parsePolicy, validatePolicy } from './loader.js';
+export { parsePolicy, validatePolicy, validatePolicyRule } from './loader.js';
 export { signPayload, verifyPayload } from './integrity.js';
 export type { SignedPolicyFile } from './integrity.js';
 export { loadOrCreateSiteKey, siteKeyFromBytes, SITE_KEY_BYTES } from './site-key.js';

@@ -212,3 +212,61 @@ describe('PolicyStore', () => {
     expect(store.getPolicy().rules).toHaveLength(2);
   });
 });
+
+describe('PolicyStore.addRule write-validation (v0.9+)', () => {
+  beforeEach(async () => {
+    tmp = await mkdtemp(join(tmpdir(), 'guardian-store-validate-'));
+  });
+  afterEach(async () => {
+    await rm(tmp, { recursive: true, force: true });
+  });
+
+  it('rejects a rule with an invalid scope', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await expect(
+      store.addRule({ tool: 'tool:x', scope: 'always' as never }),
+    ).rejects.toThrow(/scope/);
+    expect(store.getPolicy().rules).toHaveLength(0);
+  });
+
+  it('rejects a rule with an empty tool', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await expect(
+      store.addRule({ tool: '', scope: 'forever', decision: 'allow' }),
+    ).rejects.toThrow(/tool/);
+  });
+
+  it('rejects a reserved-prefix tool', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await expect(
+      store.addRule({ tool: 'guardian.escape', scope: 'forever', decision: 'allow' }),
+    ).rejects.toThrow(/reserved/);
+  });
+
+  it('strips unknown keys before signing to disk', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({
+      tool: 'tool:x',
+      scope: 'forever',
+      decision: 'allow',
+      surface: 'smuggled',
+      expiry: 'never',
+    } as never);
+    const [rule] = store.getPolicy().rules;
+    expect(rule).toEqual({ tool: 'tool:x', scope: 'forever', decision: 'allow' });
+    const raw = readFileSync(join(tmp, 'permissions.yaml'), 'utf-8');
+    expect(raw).not.toContain('smuggled');
+  });
+
+  it('rejects an invalid when clause value', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await expect(
+      store.addRule({
+        tool: 'tool:x',
+        scope: 'forever',
+        decision: 'allow',
+        when: { 'model.provider': 42 as never },
+      }),
+    ).rejects.toThrow(/model.provider/);
+  });
+});
