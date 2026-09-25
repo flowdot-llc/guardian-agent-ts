@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -268,5 +268,119 @@ describe('PolicyStore.addRule write-validation (v0.9+)', () => {
         when: { 'model.provider': 42 as never },
       }),
     ).rejects.toThrow(/model.provider/);
+  });
+});
+
+describe('PolicyStore — `when`-aware rule slots (agent-scoped grants)', () => {
+  it('keeps a conditional rule and an unconditional one for the same tool + scope', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({ tool: 'tool:file.read', scope: 'forever', decision: 'allow' });
+    await store.addRule({
+      tool: 'tool:file.read',
+      scope: 'forever',
+      decision: 'allow',
+      when: { attribution_path: 'agent.reviewer/*' },
+    });
+
+    const rules = store.getPolicy().rules.filter((r) => r.tool === 'tool:file.read');
+    expect(rules).toHaveLength(2);
+    expect(rules.filter((r) => r.when === undefined)).toHaveLength(1);
+    expect(rules.filter((r) => r.when?.attribution_path === 'agent.reviewer/*')).toHaveLength(1);
+  });
+
+  it('keeps two differently-scoped agent grants for the same tool', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({
+      tool: 'command.run:npm test*',
+      scope: 'forever',
+      decision: 'allow',
+      when: { attribution_path: 'agent.one/*' },
+    });
+    await store.addRule({
+      tool: 'command.run:npm test*',
+      scope: 'forever',
+      decision: 'allow',
+      when: { attribution_path: 'agent.two/*' },
+    });
+    expect(store.getPolicy().rules).toHaveLength(2);
+  });
+
+  it('replaces a rule whose `when` matches, regardless of key order', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({
+      tool: 'x',
+      scope: 'forever',
+      decision: 'allow',
+      when: { 'model.provider': 'openai', 'model.id': 'gpt-6-astra' },
+    });
+    await store.addRule({
+      tool: 'x',
+      scope: 'forever',
+      decision: 'deny',
+      when: { 'model.id': 'gpt-6-astra', 'model.provider': 'openai' },
+    });
+    const rules = store.getPolicy().rules;
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.decision).toBe('deny');
+  });
+
+  it('treats an empty `when` as unconditional, not as its own slot', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({ tool: 'x', scope: 'forever', decision: 'allow' });
+    await store.addRule({ tool: 'x', scope: 'forever', decision: 'deny', when: {} });
+    const rules = store.getPolicy().rules;
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.decision).toBe('deny');
+  });
+
+  it('removeRule without `when` still removes every variant (historical behaviour)', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({ tool: 'x', scope: 'forever', decision: 'allow' });
+    await store.addRule({
+      tool: 'x',
+      scope: 'forever',
+      decision: 'allow',
+      when: { attribution_path: 'agent.one/*' },
+    });
+    await store.removeRule('x', 'forever');
+    expect(store.getPolicy().rules).toHaveLength(0);
+  });
+
+  it('removeRule with `when` removes only that variant', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({ tool: 'x', scope: 'forever', decision: 'allow' });
+    await store.addRule({
+      tool: 'x',
+      scope: 'forever',
+      decision: 'allow',
+      when: { attribution_path: 'agent.one/*' },
+    });
+    await store.removeRule('x', 'forever', { attribution_path: 'agent.one/*' });
+    const rules = store.getPolicy().rules;
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.when).toBeUndefined();
+  });
+
+  it('leaves no temp files behind when writing', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await store.addRule({ tool: 'x', scope: 'forever', decision: 'allow' });
+    await store.addRule({ tool: 'y', scope: 'session', decision: 'allow' });
+    const leftovers = readdirSync(tmp).filter((name) => name.endsWith('.tmp'));
+    expect(leftovers).toEqual([]);
+  });
+
+  it('concurrent addRule calls all land (atomic write, no lost rule)', async () => {
+    const store = new PolicyStore({ dir: tmp, agentId: 'a' });
+    await Promise.all(
+      ['a', 'b', 'c', 'd', 'e'].map((name) =>
+        store.addRule({
+          tool: 'command.run:echo *',
+          scope: 'forever',
+          decision: 'allow',
+          when: { attribution_path: `agent.${name}/*` },
+        }),
+      ),
+    );
+    expect(store.getPolicy().rules).toHaveLength(5);
   });
 });

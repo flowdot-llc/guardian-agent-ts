@@ -13,10 +13,11 @@ import {
   writeFileSync,
   chmodSync,
   mkdirSync,
+  renameSync,
   unlinkSync,
   statSync,
 } from 'node:fs';
-import { randomFillSync } from 'node:crypto';
+import { randomBytes, randomFillSync } from 'node:crypto';
 import { join } from 'node:path';
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -76,38 +77,50 @@ export class PolicyStore {
    * permissions.yaml. The rule is VALIDATED on write (v0.9+): unknown keys
    * are stripped and invalid fields throw GuardianConfigError, so a caller
    * can no longer sign an arbitrary object into the store.
+   *
+   * Replacement is keyed on `(tool, scope, when)` — NOT `(tool, scope)`.
+   * A conditional rule and an unconditional one for the same pattern are
+   * different rules: scoping a grant to one caller with
+   * `when.attribution_path` must not delete the project-wide grant it
+   * narrows, and two callers' rules for the same tool must coexist. Dedupe
+   * on `(tool, scope)` alone silently dropped whichever was written first.
    */
   addRule(rawRule: PolicyRule): Promise<void> {
     return this.enqueue(() => {
       const rule = validatePolicyRule(rawRule);
-      if (rule.scope === 'session' || rule.scope === 'once') {
-        const cur = this.readSession();
-        cur.rules = [
-          ...cur.rules.filter((r) => !(r.tool === rule.tool && r.scope === rule.scope)),
-          rule,
-        ];
+      const isSessionScoped = rule.scope === 'session' || rule.scope === 'once';
+      const cur = isSessionScoped ? this.readSession() : this.readPersistent();
+      cur.rules = [...cur.rules.filter((r) => !sameRuleKey(r, rule)), rule];
+      if (isSessionScoped) {
         this.writeSession(cur);
       } else {
-        const cur = this.readPersistent();
-        cur.rules = [
-          ...cur.rules.filter((r) => !(r.tool === rule.tool && r.scope === rule.scope)),
-          rule,
-        ];
         this.writePersistent(cur);
       }
     });
   }
 
-  /** Remove a rule by tool + scope. No-op if absent. */
-  removeRule(tool: string, scope: PolicyScope): Promise<void> {
+  /**
+   * Remove rules by tool + scope. No-op if absent.
+   *
+   * With `when` omitted EVERY conditional variant of that tool+scope is
+   * removed (the historical behaviour, kept so existing callers are
+   * unchanged). Pass `when` to remove exactly one variant and leave the
+   * others — including the unconditional rule, which is matched by passing
+   * no `when` fields as an empty object is not the same thing.
+   */
+  removeRule(tool: string, scope: PolicyScope, when?: PolicyRule['when']): Promise<void> {
     return this.enqueue(() => {
+      const matches = (r: PolicyRule): boolean =>
+        r.tool === tool &&
+        r.scope === scope &&
+        (when === undefined || canonicalWhen(r.when) === canonicalWhen(when));
       if (scope === 'session' || scope === 'once') {
         const cur = this.readSession();
-        cur.rules = cur.rules.filter((r) => !(r.tool === tool && r.scope === scope));
+        cur.rules = cur.rules.filter((r) => !matches(r));
         this.writeSession(cur);
       } else {
         const cur = this.readPersistent();
-        cur.rules = cur.rules.filter((r) => !(r.tool === tool && r.scope === scope));
+        cur.rules = cur.rules.filter((r) => !matches(r));
         this.writePersistent(cur);
       }
     });
@@ -189,7 +202,7 @@ export class PolicyStore {
       signature,
       data: dataStr,
     };
-    writeFileSync(path, stringifyYaml(file), { mode: 0o600 });
+    writeFileAtomic(path, stringifyYaml(file), 0o600);
     /* c8 ignore start */
     try {
       chmodSync(path, 0o600);
@@ -218,7 +231,7 @@ export class PolicyStore {
       defaults: policy.defaults,
       rules: policy.rules,
     };
-    writeFileSync(path, stringifyYaml(payload, { sortMapEntries: true }), { mode: 0o600 });
+    writeFileAtomic(path, stringifyYaml(payload, { sortMapEntries: true }), 0o600);
     /* c8 ignore start */
     try {
       chmodSync(path, 0o600);
@@ -226,6 +239,50 @@ export class PolicyStore {
       // ignore
     }
     /* c8 ignore stop */
+  }
+}
+
+/**
+ * A `when` clause rendered so two clauses with the same meaning compare equal
+ * regardless of key order. An absent clause and an empty one are both `''`:
+ * neither constrains anything, so treating them as different rules would let
+ * `{}` shadow the unconditional rule it is indistinguishable from.
+ */
+function canonicalWhen(when: PolicyRule['when']): string {
+  if (!when) return '';
+  const entries = Object.entries(when)
+    .filter(([, value]) => value !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return entries.length === 0 ? '' : JSON.stringify(entries);
+}
+
+/** Two rules occupy the same slot when tool, scope AND `when` all match. */
+function sameRuleKey(a: PolicyRule, b: PolicyRule): boolean {
+  return a.tool === b.tool && a.scope === b.scope && canonicalWhen(a.when) === canonicalWhen(b.when);
+}
+
+/**
+ * Write `content` to `path` through a uniquely-named temp file in the same
+ * directory, then rename over the target.
+ *
+ * A fixed `<path>.tmp` is not safe here: several processes share one policy
+ * directory (the CLI, its agent-job workers and the desktop app), and two
+ * concurrent writers would use the same temp path and interleave. The rename
+ * is atomic on the same filesystem, so a reader sees either the old file or
+ * the new one, never a half-written one.
+ */
+function writeFileAtomic(path: string, content: string, mode: number): void {
+  const tmpPath = `${path}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
+  try {
+    writeFileSync(tmpPath, content, { mode });
+    renameSync(tmpPath, path);
+  } catch (err) {
+    try {
+      unlinkSync(tmpPath);
+    } catch {
+      // The temp file may not exist; the original error is what matters.
+    }
+    throw err;
   }
 }
 

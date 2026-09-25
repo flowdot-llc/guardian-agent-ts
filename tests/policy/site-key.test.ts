@@ -2,7 +2,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import {
   loadOrCreateSiteKey,
@@ -59,5 +60,50 @@ describe('siteKeyFromBytes', () => {
 
   it('rejects wrong-length bytes', () => {
     expect(() => siteKeyFromBytes(Buffer.alloc(16))).toThrow(GuardianConfigError);
+  });
+});
+
+describe('loadOrCreateSiteKey — exclusive creation', () => {
+  it("returns the winner's key when another process creates it first (EEXIST)", async () => {
+    const path = join(tmp, 'site.key');
+    const rival = Buffer.alloc(SITE_KEY_BYTES, 9);
+
+    // Simulate the real race: the exclusive create fails with EEXIST because a
+    // second process wrote the key between our existsSync check and our write.
+    vi.resetModules();
+    vi.doMock('node:fs', async () => {
+      const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+      let firstExclusiveWrite = true;
+      return {
+        ...actual,
+        writeFileSync: ((target: string, data: unknown, options?: { flag?: string }) => {
+          if (firstExclusiveWrite && options?.flag === 'wx') {
+            firstExclusiveWrite = false;
+            actual.writeFileSync(target, rival);
+            const err = new Error('EEXIST: file already exists') as NodeJS.ErrnoException;
+            err.code = 'EEXIST';
+            throw err;
+          }
+          return actual.writeFileSync(target, data as never, options as never);
+        }) as typeof actual.writeFileSync,
+      };
+    });
+
+    try {
+      const mod = await import('../../src/policy/site-key.js');
+      const key = mod.loadOrCreateSiteKey(path);
+      expect(key.bytes.equals(rival)).toBe(true);
+      expect(readFileSync(path).equals(rival)).toBe(true);
+    } finally {
+      vi.doUnmock('node:fs');
+      vi.resetModules();
+    }
+  });
+
+  it('two sequential loads in one directory agree on one key', () => {
+    const path = join(tmp, 'site.key');
+    const a = loadOrCreateSiteKey(path);
+    const b = loadOrCreateSiteKey(path);
+    expect(a.bytes.equals(b.bytes)).toBe(true);
   });
 });
